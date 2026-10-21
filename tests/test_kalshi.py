@@ -49,3 +49,22 @@ def test_condense_candles_handles_missing_quotes():
         }
     ]
     assert kalshi.condense_candles(candles) == [[100, 0.4, 0.42, None, 0.0]]
+
+
+def test_select_markets_caps_series_then_total(monkeypatch):
+    monkeypatch.setattr(kalshi.config, "KALSHI_MAX_MARKETS_PER_SERIES", 3)
+    monkeypatch.setattr(kalshi.config, "KALSHI_MAX_MARKETS", 5)
+    listed = [
+        [
+            {
+                **_market(ticker=f"{s}-{i}", close=f"2026-01-{i + 1:02d}T00:00:00Z"),
+                "series_ticker": s,
+            }
+            for i in range(10)
+        ]
+        for s in ("A", "B", "C")
+    ] + [[]]
+    out = kalshi.select_markets(listed)
+    assert len(out) == 5
+    assert max(sum(m["series_ticker"] == s for m in out) for s in "ABC") <= 3
+    assert out == kalshi.select_markets(listed)

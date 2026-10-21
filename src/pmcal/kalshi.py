@@ -113,9 +113,25 @@ def list_series_markets(client: ApiClient, series: dict[str, Any]) -> list[dict[
         )
     ]
     eligible.sort(key=lambda m: m["close_time"])
-    sampled = sample_markets(eligible, config.KALSHI_MAX_MARKETS_PER_SERIES, series["ticker"])
+    sampled = sample_markets(eligible, config.KALSHI_MAX_LISTED_PER_SERIES, series["ticker"])
     write_json(path, sampled)
     return sampled
+
+
+def select_markets(listed: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Caps each series, then the pooled sample, with seeded random draws."""
+    markets = [
+        m
+        for batch in listed
+        if batch
+        for m in sample_markets(
+            batch, config.KALSHI_MAX_MARKETS_PER_SERIES, batch[0]["series_ticker"]
+        )
+    ]
+    eligible = len(markets)
+    markets = sample_markets(markets, config.KALSHI_MAX_MARKETS, "all")
+    log.info("Kalshi: %d markets after the per-series cap; %d sampled", eligible, len(markets))
+    return sorted(markets, key=lambda m: m["close_time"])
 
 
 def _dollars(block: dict[str, Any] | None, key: str = "close") -> float | None:
@@ -161,21 +177,20 @@ def fetch_candles(client: ApiClient, market: dict[str, Any]) -> None:
     write_json(path, condense_candles((body or {}).get("candlesticks") or []))
 
 
-def run(rate: float = 5.0, workers: int = 4) -> None:
+def run(rate: float = 4.0, workers: int = 4) -> None:
     with ApiClient(BASE_URL, rate=rate) as client:
-        series = [s for s in fetch_series(client) if s["volume"] >= config.KALSHI_MIN_VOLUME]
+        series = [s for s in fetch_series(client) if s["volume"] >= config.KALSHI_MIN_SERIES_VOLUME]
         log.info("Kalshi: %d series with enough volume", len(series))
-        markets: list[dict[str, Any]] = []
         with ThreadPoolExecutor(workers) as pool:
-            for batch in tqdm(
-                pool.map(lambda s: list_series_markets(client, s), series),
-                total=len(series),
-                desc="kalshi series",
-            ):
-                markets.extend(batch)
-        markets.sort(key=lambda m: m["close_time"])
+            listed = list(
+                tqdm(
+                    pool.map(lambda s: list_series_markets(client, s), series),
+                    total=len(series),
+                    desc="kalshi series",
+                )
+            )
+        markets = select_markets(listed)
         write_json(RAW / "markets.json", markets)
-        log.info("Kalshi: %d sampled markets", len(markets))
         with ThreadPoolExecutor(workers) as pool:
             list(
                 tqdm(
