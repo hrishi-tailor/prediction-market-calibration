@@ -6,17 +6,21 @@ requests, so every request goes through one throttled, retrying client.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from typing import Any
 
 import httpx
 from tenacity import (
+    before_sleep_log,
     retry,
     retry_if_exception,
     stop_after_attempt,
     wait_exponential_jitter,
 )
+
+log = logging.getLogger(__name__)
 
 USER_AGENT = (
     "pmcal/0.1 (calibration research; github.com/hrishi-tailor/prediction-market-calibration)"
@@ -57,6 +61,7 @@ class ApiClient:
         retry=retry_if_exception(_is_retryable),
         wait=wait_exponential_jitter(initial=1, max=60),
         stop=stop_after_attempt(8),
+        before_sleep=before_sleep_log(log, logging.WARNING),
         reraise=True,
     )
     def get(self, path: str, params: dict[str, Any] | None = None) -> Any:

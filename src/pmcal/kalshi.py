@@ -1,12 +1,13 @@
 """Fetches settled Kalshi markets and their hourly price history.
 
-Discovery is one sequential scan over every settled market (the historical
-endpoint only supports cursor paging, and per-series listing is heavily rate
-limited). Combo markets are excluded server-side; thin and unresolved markets are
-dropped as each page arrives. Each series then contributes at most
-`KALSHI_MAX_MARKETS_PER_SERIES` randomly sampled markets, so a few hourly series
-cannot dominate, and each sampled market's hourly candles cover the 31 days
-before it closed.
+Markets are discovered series by series. A flat scan of every settled market is
+not practical: Kalshi lists ~75k markets a day, mostly hourly and 15-minute
+series. Series with less than `KALSHI_MIN_VOLUME` lifetime volume and combo
+series are skipped up front. For each remaining series we read the most recent
+page (up to 1,000 markets) from both the live and historical endpoints, drop
+thin and unresolved markets, and keep at most `KALSHI_MAX_MARKETS_PER_SERIES`
+randomly sampled ones, so a few hourly series cannot dominate. Each sampled
+market's hourly candles cover the 31 days before it closed.
 """
 
 from __future__ import annotations
@@ -43,18 +44,18 @@ def is_combo_series(ticker: str) -> bool:
     return ticker.startswith("KXMVE")
 
 
-def series_of(event_ticker: str) -> str:
-    """Kalshi event tickers are '<SERIES>-<suffix>'."""
-    return event_ticker.split("-", 1)[0]
-
-
 def fetch_series(client: ApiClient) -> list[dict[str, Any]]:
     path = RAW / "series.json"
     if path.exists():
         return read_json(path)
     series = [
-        {"ticker": s["ticker"], "category": s.get("category") or "Unknown", "title": s["title"]}
-        for s in client.get("/series")["series"]
+        {
+            "ticker": s["ticker"],
+            "category": s.get("category") or "Unknown",
+            "title": s["title"],
+            "volume": float(s.get("volume_fp") or 0),
+        }
+        for s in client.get("/series", {"include_volume": "true"})["series"]
         if not is_combo_series(s["ticker"])
     ]
     write_json(path, series)
@@ -92,62 +93,29 @@ def sample_markets(markets: list[dict[str, Any]], cap: int, seed_key: str) -> li
     return sorted(rng.sample(markets, cap), key=lambda m: m["close_time"])
 
 
-def scan_settled(client: ApiClient, path: str, params: dict[str, Any], name: str) -> None:
-    """Pages through every settled market at `path`, keeping only eligible ones.
-
-    Each page's survivors go to their own chunk file and the cursor is
-    checkpointed after every page, so an interrupted scan resumes where it stopped.
-    """
-    series = {s["ticker"]: s for s in fetch_series(client)}
-    out_dir = RAW / "scan" / name
-    state_path = out_dir / "state.json"
-    state = read_json(state_path) if state_path.exists() else {"page": 0, "cursor": None}
-    if state.get("done"):
-        return
-    progress = tqdm(desc=f"kalshi scan {name}", initial=state["page"], unit="page")
-    while not state.get("done"):
-        query = {**params, "mve_filter": "exclude", "limit": PAGE_SIZE}
-        if state["cursor"]:
-            query["cursor"] = state["cursor"]
-        page = client.get(path, query) or {}
-        markets = page.get("markets") or []
-        kept = []
-        for m in markets:
-            s = series.get(series_of(m["event_ticker"]))
-            if s is None:
-                continue
-            slim = slim_market(m, s)
-            if is_eligible({**slim, "market_type": m.get("market_type", "binary")}):
-                kept.append(slim)
-        write_json(out_dir / f"page-{state['page']:06d}.json", kept)
-        cursor = page.get("cursor")
-        state = {"page": state["page"] + 1, "cursor": cursor, "done": not cursor or not markets}
-        write_json(state_path, state)
-        progress.update()
-    progress.close()
-
-
-def select_markets() -> list[dict[str, Any]]:
-    """Dedupes scanned markets and samples at most N per series."""
-    by_ticker: dict[str, dict] = {}
-    for chunk in sorted((RAW / "scan").glob("*/page-*.json")):
-        for m in read_json(chunk):
-            by_ticker.setdefault(m["ticker"], m)
-    by_series: dict[str, list] = {}
-    for m in by_ticker.values():
-        by_series.setdefault(m["series_ticker"], []).append(m)
-    selected = []
-    for key in sorted(by_series):
-        markets = sorted(by_series[key], key=lambda m: m["close_time"])
-        selected.extend(sample_markets(markets, config.KALSHI_MAX_MARKETS_PER_SERIES, key))
-    log.info(
-        "Kalshi: %d eligible markets in %d series; %d sampled",
-        len(by_ticker),
-        len(by_series),
-        len(selected),
-    )
-    write_json(RAW / "markets.json", selected)
-    return selected
+def list_series_markets(client: ApiClient, series: dict[str, Any]) -> list[dict[str, Any]]:
+    """The sampled, eligible settled markets of one series (cached per series)."""
+    path = RAW / "markets" / f"{safe_name(series['ticker'])}.json"
+    if path.exists():
+        return read_json(path)
+    raw: dict[str, dict] = {}
+    params = {"series_ticker": series["ticker"], "limit": PAGE_SIZE}
+    # Recently settled markets live under /markets; older ones moved to /historical.
+    for endpoint, extra in (("/markets", {"status": "settled"}), ("/historical/markets", {})):
+        page = client.get(endpoint, {**params, **extra}) or {}
+        for m in page.get("markets") or []:
+            raw.setdefault(m["ticker"], m)
+    eligible = [
+        slim
+        for m in raw.values()
+        if is_eligible(
+            {**(slim := slim_market(m, series)), "market_type": m.get("market_type", "binary")}
+        )
+    ]
+    eligible.sort(key=lambda m: m["close_time"])
+    sampled = sample_markets(eligible, config.KALSHI_MAX_MARKETS_PER_SERIES, series["ticker"])
+    write_json(path, sampled)
+    return sampled
 
 
 def _dollars(block: dict[str, Any] | None, key: str = "close") -> float | None:
@@ -193,11 +161,21 @@ def fetch_candles(client: ApiClient, market: dict[str, Any]) -> None:
     write_json(path, condense_candles((body or {}).get("candlesticks") or []))
 
 
-def run(rate: float = 4.0, workers: int = 4) -> None:
+def run(rate: float = 7.0, workers: int = 6) -> None:
     with ApiClient(BASE_URL, rate=rate) as client:
-        scan_settled(client, "/historical/markets", {}, "historical")
-        scan_settled(client, "/markets", {"status": "settled"}, "live")
-        markets = select_markets()
+        series = [s for s in fetch_series(client) if s["volume"] >= config.KALSHI_MIN_VOLUME]
+        log.info("Kalshi: %d series with enough volume", len(series))
+        markets: list[dict[str, Any]] = []
+        with ThreadPoolExecutor(workers) as pool:
+            for batch in tqdm(
+                pool.map(lambda s: list_series_markets(client, s), series),
+                total=len(series),
+                desc="kalshi series",
+            ):
+                markets.extend(batch)
+        markets.sort(key=lambda m: m["close_time"])
+        write_json(RAW / "markets.json", markets)
+        log.info("Kalshi: %d sampled markets", len(markets))
         with ThreadPoolExecutor(workers) as pool:
             list(
                 tqdm(
