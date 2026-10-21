@@ -1,5 +1,7 @@
 # Are prediction markets calibrated?
 
+[![CI](https://github.com/hrishi-tailor/prediction-market-calibration/actions/workflows/ci.yml/badge.svg)](https://github.com/hrishi-tailor/prediction-market-calibration/actions/workflows/ci.yml)
+
 When a prediction market prices an outcome at 70¢, does it happen 70% of the time?
 
 This project tests that on **46,168 resolved markets** from Kalshi and Polymarket
