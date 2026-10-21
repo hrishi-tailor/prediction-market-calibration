@@ -86,3 +86,20 @@ def test_load_points_merges_full_and_hourly_histories(tmp_path, monkeypatch):
     write_json(polymarket.hourly_path("7"), [[200, 0.31], [150, 0.25]])
     assert polymarket.load_points("7") == [[100, 0.2], [150, 0.25], [200, 0.31]]
     assert polymarket.load_points("missing") == []
+
+
+def test_fetch_hourly_skips_markets_that_open_after_close(tmp_path, monkeypatch):
+    monkeypatch.setattr(polymarket, "RAW", tmp_path)
+
+    class NoCalls:
+        def get(self, *args):
+            raise AssertionError("should not request an empty window")
+
+    market = {
+        "market_id": "9",
+        "yes_token": "1",
+        "open_time": "2025-03-01T00:00:00Z",
+        "close_time": "2025-02-01T00:00:00+00:00",
+    }
+    polymarket.fetch_hourly(NoCalls(), market)
+    assert polymarket.load_points("9") == []

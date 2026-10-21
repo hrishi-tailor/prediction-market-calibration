@@ -23,6 +23,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 from tqdm import tqdm
 
 from pmcal import config
@@ -224,15 +225,23 @@ def fetch_hourly(client: ApiClient, market: dict[str, Any]) -> None:
     close = datetime.fromisoformat(market["close_time"])
     opened = datetime.fromisoformat(market["open_time"].replace("Z", "+00:00"))
     start = max(opened, close - HOURLY_WINDOW)
-    body = client.get(
-        "/prices-history",
-        {
-            "market": market["yes_token"],
-            "startTs": int(start.timestamp()),
-            "endTs": int(close.timestamp()),
-            "fidelity": 60,
-        },
-    )
+    body = None
+    # Some markets list a start date after they closed; there is nothing to fetch.
+    if start < close:
+        try:
+            body = client.get(
+                "/prices-history",
+                {
+                    "market": market["yes_token"],
+                    "startTs": int(start.timestamp()),
+                    "endTs": int(close.timestamp()),
+                    "fidelity": 60,
+                },
+            )
+        except httpx.HTTPStatusError as exc:
+            log.warning(
+                "No hourly prices for %s: %s", market["market_id"], exc.response.status_code
+            )
     points = (body or {}).get("history") or []
     write_json(path, sorted([[int(p["t"]), float(p["p"])] for p in points]))
 
