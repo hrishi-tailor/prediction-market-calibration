@@ -149,9 +149,9 @@ def _polymarket_all() -> Iterable[dict]:
     from pmcal import polymarket
 
     for market in polymarket.load_markets():
-        path = polymarket.history_path(market["market_id"])
-        if path.exists():
-            yield from polymarket_rows(market, read_json(path)["history"])
+        points = polymarket.load_points(market["market_id"])
+        if points:
+            yield from polymarket_rows(market, points)
 
 
 def build() -> pd.DataFrame:

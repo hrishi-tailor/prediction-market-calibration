@@ -76,3 +76,13 @@ def test_list_events_splits_busy_windows(monkeypatch):
     start = datetime(2025, 1, 1, tzinfo=UTC)
     events = polymarket.list_events(FakeClient(), start, start + timedelta(days=8))
     assert len(events) == 4  # 8 days split into four 2-day windows
+
+
+def test_load_points_merges_full_and_hourly_histories(tmp_path, monkeypatch):
+    from pmcal.storage import write_json
+
+    monkeypatch.setattr(polymarket, "RAW", tmp_path)
+    write_json(polymarket.history_path("7"), {"fidelity": 720, "history": [[100, 0.2], [200, 0.3]]})
+    write_json(polymarket.hourly_path("7"), [[200, 0.31], [150, 0.25]])
+    assert polymarket.load_points("7") == [[100, 0.2], [150, 0.25], [200, 0.31]]
+    assert polymarket.load_points("missing") == []

@@ -7,8 +7,10 @@ cleanly to 1 or 0 with enough volume are kept, at most
 order book (the 2020-22 AMM era) are skipped, since they have no price history.
 Prices come from the CLOB
 `prices-history` endpoint for the Yes token. Hourly history is not available for
-older markets, so the fetcher falls back to 12-hourly and then daily points; the
-dataset builder drops any point too old for its horizon.
+older markets over their whole life (`interval=max`), so the fetcher falls back
+to 12-hourly and then daily points. Hourly points *are* served for a bounded
+window, so a second request fetches hourly prices for the 14 days before close;
+the dataset builder merges both and drops any point too old for its horizon.
 """
 
 from __future__ import annotations
@@ -35,6 +37,8 @@ RAW = config.RAW_DIR / "polymarket"
 PAGE_SIZE = 100
 FIRST_WEEK = datetime(2020, 10, 5, tzinfo=UTC)
 FIDELITIES = (60, 720, 1440)  # minutes; finest first
+# The CLOB rejects startTs/endTs windows longer than roughly two weeks.
+HOURLY_WINDOW = timedelta(days=14)
 
 # Gamma tags are free-form; map them to a small set of categories, in priority order.
 CATEGORY_TAGS: list[tuple[str, set[str]]] = [
@@ -208,6 +212,43 @@ def fetch_history(client: ApiClient, market: dict[str, Any]) -> None:
     )
 
 
+def hourly_path(market_id: str) -> Path:
+    return RAW / "hourly" / f"{safe_name(market_id)}.json.gz"
+
+
+def fetch_hourly(client: ApiClient, market: dict[str, Any]) -> None:
+    """Hourly prices for the `HOURLY_WINDOW` before close."""
+    path = hourly_path(market["market_id"])
+    if path.exists():
+        return
+    close = datetime.fromisoformat(market["close_time"])
+    opened = datetime.fromisoformat(market["open_time"].replace("Z", "+00:00"))
+    start = max(opened, close - HOURLY_WINDOW)
+    body = client.get(
+        "/prices-history",
+        {
+            "market": market["yes_token"],
+            "startTs": int(start.timestamp()),
+            "endTs": int(close.timestamp()),
+            "fidelity": 60,
+        },
+    )
+    points = (body or {}).get("history") or []
+    write_json(path, sorted([[int(p["t"]), float(p["p"])] for p in points]))
+
+
+def load_points(market_id: str) -> list[list[float]]:
+    """Merged, time-sorted price points from the full-life and hourly histories."""
+    points: dict[int, float] = {}
+    full = history_path(market_id)
+    if full.exists():
+        points.update((int(t), p) for t, p in read_json(full)["history"])
+    hourly = hourly_path(market_id)
+    if hourly.exists():
+        points.update((int(t), p) for t, p in read_json(hourly))
+    return [[t, points[t]] for t in sorted(points)]
+
+
 def weeks(until: datetime) -> list[datetime]:
     out, week = [], FIRST_WEEK
     while week < until:
@@ -244,6 +285,13 @@ def run(rate: float = 8.0, workers: int = 6) -> None:
                 pool.map(lambda m: fetch_history(clob, m), markets),
                 total=len(markets),
                 desc="polymarket history",
+            )
+        )
+        list(
+            tqdm(
+                pool.map(lambda m: fetch_hourly(clob, m), markets),
+                total=len(markets),
+                desc="polymarket hourly",
             )
         )
 
