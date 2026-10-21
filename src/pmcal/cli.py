@@ -14,6 +14,7 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("fetch-polymarket", help="download resolved Polymarket markets and prices")
     p.add_argument("--rate", type=float, default=8.0, help="requests per second")
     sub.add_parser("build", help="build the per-horizon observations dataset")
+    sub.add_parser("analyze", help="compute results, write figures/ and reports/")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -31,6 +32,10 @@ def main(argv: list[str] | None = None) -> None:
         from pmcal import dataset
 
         dataset.build()
+    elif args.command == "analyze":
+        from pmcal import report
+
+        report.run()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,63 @@
+from datetime import UTC, datetime
+
+import numpy as np
+import pandas as pd
+
+from pmcal import config, report
+
+
+def synthetic_dataset(n_markets=3_000, seed=1):
+    rng = np.random.default_rng(seed)
+    rows = []
+    for platform in ("Kalshi", "Polymarket"):
+        for i in range(n_markets):
+            p_true = rng.uniform(0.02, 0.98)
+            outcome = int(rng.uniform() < p_true)
+            event = f"{platform}-E{i // 3}"
+            for horizon, hours in (("30d", 720), ("7d", 168), ("1d", 24), ("1h", 1)):
+                price = float(np.clip(p_true + rng.normal(0, 0.03), 0.01, 0.99))
+                rows.append(
+                    {
+                        "platform": platform,
+                        "market_id": f"{platform}-{i}",
+                        "event_id": event,
+                        "series_id": event,
+                        "category": ["Sports", "Politics", "Economics"][i % 3],
+                        "title": "",
+                        "volume": float(rng.lognormal(9, 1)),
+                        "open_time": datetime(2025, 1, 1, tzinfo=UTC),
+                        "close_time": datetime(2025, 3, 1, tzinfo=UTC),
+                        "duration_days": 59.0,
+                        "outcome": outcome,
+                        "horizon": horizon,
+                        "horizon_hours": float(hours),
+                        "price": price,
+                        "bid": price - 0.005 if platform == "Kalshi" else None,
+                        "ask": price + 0.005 if platform == "Kalshi" else None,
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def test_report_runs_end_to_end(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "DATASET_PATH", tmp_path / "obs.parquet")
+    monkeypatch.setattr(config, "FIGURES_DIR", tmp_path / "figures")
+    monkeypatch.setattr(config, "REPORTS_DIR", tmp_path / "reports")
+    synthetic_dataset().to_parquet(config.DATASET_PATH)
+
+    result = report.run()
+
+    figures = {p.name for p in (tmp_path / "figures").iterdir()}
+    assert figures == {
+        "reliability_by_horizon.png",
+        "calibration_gap.png",
+        "platform_comparison.png",
+        "returns_by_price.png",
+        "slopes_by_group.png",
+    }
+    text = (tmp_path / "reports" / "results.md").read_text()
+    assert "## Calibration by platform and horizon" in text
+    assert len(result["summary"]) == 8
+    # Synthetic prices are calibrated (with noise), so slopes should be near 1.
+    for row in result["summary"]:
+        assert 0.8 < row["b"] < 1.2
