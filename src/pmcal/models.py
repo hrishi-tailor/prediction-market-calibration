@@ -78,10 +78,18 @@ def volume_terciles(df: pd.DataFrame) -> pd.Series:
 
 
 def fold_small_categories(categories: pd.Series, events: pd.Series, min_events: int) -> pd.Series:
-    """Relabels categories with fewer than `min_events` distinct events as 'Other'."""
+    """Relabels categories with fewer than `min_events` distinct events as 'Other'.
+
+    If 'Other' is itself still that small, it is merged into the largest category,
+    so no level of the result is thin enough to separate perfectly.
+    """
     counts = events.groupby(categories).nunique()
     small = counts[counts < min_events].index
-    return categories.where(~categories.isin(small), "Other")
+    folded = categories.where(~categories.isin(small), "Other")
+    if (folded == "Other").any() and events[folded == "Other"].nunique() < min_events:
+        largest = events.groupby(folded).nunique().drop("Other").idxmax()
+        folded = folded.where(folded != "Other", largest)
+    return folded
 
 
 def drivers_model(df: pd.DataFrame, min_events: int = 50) -> pd.DataFrame:
