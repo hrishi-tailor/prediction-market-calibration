@@ -37,7 +37,6 @@ POLYMARKET_MIN_VOLUME = 10_000
 # High-frequency series (hourly temperature, 15-minute crypto) list thousands of
 # near-identical markets. Capping each series stops a few of them dominating.
 KALSHI_MAX_MARKETS_PER_SERIES = 40
-KALSHI_MAX_LISTED_PER_SERIES = 2_000
 POLYMARKET_MAX_MARKETS_PER_EVENT = 10
 
 RANDOM_SEED = 20261021
