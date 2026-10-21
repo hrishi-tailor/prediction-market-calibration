@@ -23,6 +23,9 @@ log = logging.getLogger(__name__)
 
 # Wider spreads mean the midpoint says little about the market's belief.
 MAX_SPREAD = 0.10
+# A market that closed this long before its scheduled end most likely closed
+# because the event happened, so its close time depends on its outcome.
+EARLY_CLOSE = timedelta(days=1)
 
 
 def parse_ts(value: str) -> datetime:
@@ -87,6 +90,8 @@ def kalshi_rows(market: dict[str, Any], candles: Sequence[Sequence[Any]]) -> lis
         },
         close,
     )
+    # Kalshi does not expose a scheduled close separate from the actual one.
+    base["closed_early"] = None
     rows = []
     for name, delta in config.HORIZONS.items():
         t = close - delta
@@ -111,10 +116,24 @@ def kalshi_rows(market: dict[str, Any], candles: Sequence[Sequence[Any]]) -> lis
     return rows
 
 
-def polymarket_rows(market: dict[str, Any], points: Sequence[Sequence[float]]) -> list[dict]:
+def closed_early(times: dict[str, str | None] | None) -> bool | None:
+    """True if a market closed more than `EARLY_CLOSE` before its scheduled end."""
+    if not times or not times.get("end") or not times.get("closed"):
+        return None
+    end, closed = parse_ts(times["end"]), parse_ts(times["closed"])
+    if closed.tzinfo is None:
+        closed = closed.replace(tzinfo=end.tzinfo)
+    return end - closed > EARLY_CLOSE
+
+
+def polymarket_rows(
+    market: dict[str, Any],
+    points: Sequence[Sequence[float]],
+    times: dict[str, str | None] | None = None,
+) -> list[dict]:
     close = parse_ts(market["close_time"])
     opened = parse_ts(market["open_time"])
-    base = _base_row("Polymarket", market, close)
+    base = {**_base_row("Polymarket", market, close), "closed_early": closed_early(times)}
     rows = []
     for name, delta in config.HORIZONS.items():
         t = close - delta
@@ -148,10 +167,11 @@ def _kalshi_all() -> Iterable[dict]:
 def _polymarket_all() -> Iterable[dict]:
     from pmcal import polymarket
 
+    close_times = polymarket.load_close_times()
     for market in polymarket.load_markets():
         points = polymarket.load_points(market["market_id"])
         if points:
-            yield from polymarket_rows(market, points)
+            yield from polymarket_rows(market, points, close_times.get(market["market_id"]))
 
 
 def build() -> pd.DataFrame:

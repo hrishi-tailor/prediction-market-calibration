@@ -73,3 +73,12 @@ def test_polymarket_drops_stale_points():
     assert rows["30d"]["price"] == 0.2
     assert "7d" not in rows  # last point is 24 days old, beyond the 1-day tolerance
     assert rows["1h"]["price"] == 0.1
+
+
+def test_closed_early():
+    assert dataset.closed_early({"end": "2025-03-10T00:00:00Z", "closed": "2025-03-01 12:00:00+00"})
+    assert not dataset.closed_early(
+        {"end": "2025-03-10T00:00:00Z", "closed": "2025-03-09 12:00:00+00"}
+    )
+    assert dataset.closed_early({"end": None, "closed": "2025-03-01 12:00:00+00"}) is None
+    assert dataset.closed_early(None) is None

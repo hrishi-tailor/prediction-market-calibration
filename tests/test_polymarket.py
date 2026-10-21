@@ -103,3 +103,22 @@ def test_fetch_hourly_skips_markets_that_open_after_close(tmp_path, monkeypatch)
     }
     polymarket.fetch_hourly(NoCalls(), market)
     assert polymarket.load_points("9") == []
+
+
+def test_fetch_close_times_batches_and_caches(tmp_path, monkeypatch):
+    monkeypatch.setattr(polymarket, "RAW", tmp_path)
+    calls = []
+
+    class FakeClient:
+        def get(self, path):
+            calls.append(path)
+            ids = [part[3:] for part in path.split("?")[1].split("&") if part.startswith("id=")]
+            return [
+                {"id": int(i), "endDate": "2025-03-10T00:00:00Z", "closedTime": None} for i in ids
+            ]
+
+    markets = [{"market_id": str(i)} for i in range(250)]
+    times = polymarket.fetch_close_times(FakeClient(), markets)
+    assert len(times) == 250 and len(calls) == 3
+    polymarket.fetch_close_times(FakeClient(), markets)
+    assert len(calls) == 3  # second run is served from the cache

@@ -258,6 +258,30 @@ def load_points(market_id: str) -> list[list[float]]:
     return [[t, points[t]] for t in sorted(points)]
 
 
+def fetch_close_times(client: ApiClient, markets: list[dict[str, Any]]) -> dict[str, dict]:
+    """Scheduled end date and actual close time per market, looked up 100 at a time.
+
+    Many markets ("Will X happen by D?") close as soon as X happens, so their
+    close time depends on the outcome. The dataset uses these to flag markets
+    that closed well before their scheduled end.
+    """
+    path = RAW / "close_times.json"
+    times: dict[str, dict] = read_json(path) if path.exists() else {}
+    missing = [m["market_id"] for m in markets if m["market_id"] not in times]
+    for i in tqdm(range(0, len(missing), 100), desc="polymarket close times"):
+        batch = missing[i : i + 100]
+        query = "&".join(f"id={market_id}" for market_id in batch)
+        for row in client.get(f"/markets?{query}&closed=true&limit=100") or []:
+            times[str(row["id"])] = {"end": row.get("endDate"), "closed": row.get("closedTime")}
+    write_json(path, times)
+    return times
+
+
+def load_close_times() -> dict[str, dict]:
+    path = RAW / "close_times.json"
+    return read_json(path) if path.exists() else {}
+
+
 def weeks(until: datetime) -> list[datetime]:
     out, week = [], FIRST_WEEK
     while week < until:
@@ -288,6 +312,8 @@ def run(rate: float = 8.0, workers: int = 6) -> None:
         )
     log.info("Polymarket: %d eligible markets; %d sampled", len(seen), len(markets))
     write_json(RAW / "markets.json", markets)
+    with ApiClient(GAMMA_URL, rate=rate) as gamma:
+        fetch_close_times(gamma, markets)
     with ApiClient(CLOB_URL, rate=rate) as clob, ThreadPoolExecutor(workers) as pool:
         list(
             tqdm(

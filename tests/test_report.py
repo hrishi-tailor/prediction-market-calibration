@@ -34,6 +34,7 @@ def synthetic_dataset(n_markets=3_000, seed=1):
                         "price": price,
                         "bid": price - 0.005 if platform == "Kalshi" else None,
                         "ask": price + 0.005 if platform == "Kalshi" else None,
+                        "closed_early": None if platform == "Kalshi" else bool(i % 10 == 0),
                     }
                 )
     return pd.DataFrame(rows)
@@ -57,6 +58,7 @@ def test_report_runs_end_to_end(tmp_path, monkeypatch):
     }
     text = (tmp_path / "reports" / "results.md").read_text()
     assert "## Calibration by platform and horizon" in text
+    assert "## Sensitivity: Polymarket markets that closed on schedule" in text
     assert len(result["summary"]) == 8
     # Synthetic prices are calibrated (with noise), so slopes should be near 1.
     for row in result["summary"]:
