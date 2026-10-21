@@ -106,47 +106,72 @@ def reliability_grid(tables: dict[str, pd.DataFrame], stats: dict[str, dict], ti
         _cents(ax, "y")
         ax.set_xlabel("Market price")
     np.atleast_1d(axes)[0].set_ylabel("Resolved Yes")
-    fig.suptitle(title, x=0.01, ha="left", fontsize=12, fontweight="bold", color=INK)
+    fig.suptitle(title, x=0.01, y=1.0, ha="left", fontsize=12, fontweight="bold", color=INK)
+    fig.tight_layout()
     return _save(fig, "reliability_by_horizon.png")
 
 
 def gap_plot(gaps: dict[str, dict[str, pd.DataFrame]]) -> Path:
-    """Realized frequency minus price by bucket: a panel per platform, a line per horizon.
+    """Realized frequency minus price by bucket, with 95% CIs: platforms x horizons.
 
     Reliability diagrams compress small but systematic errors near the diagonal;
     plotting the gap makes the favourite-longshot pattern visible.
     """
     platforms = list(gaps)
-    fig, axes = plt.subplots(1, len(platforms), figsize=(5.2 * len(platforms), 3.8), sharey=True)
-    for ax, platform in zip(np.atleast_1d(axes), platforms, strict=True):
-        ax.axhline(0, color=MUTED, lw=1)
-        for color, (horizon, table) in zip(SERIES, gaps[platform].items(), strict=False):
-            ax.plot(
-                table["mean_price"],
-                table["gap"],
-                "-o",
-                color=color,
-                lw=2,
-                ms=4.5,
-                mec=SURFACE,
-                mew=0.8,
-                label=horizon,
-            )
-        ax.set_title(platform)
-        ax.set_xlim(0, 1)
-        _cents(ax, "x")
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v * 100:+.0f} pp"))
-        ax.set_xlabel("Market price")
-    np.atleast_1d(axes)[0].set_ylabel("Resolved Yes − price")
-    np.atleast_1d(axes)[-1].legend(title="Before close", title_fontsize=9, loc="best")
+    horizons = list(config.HORIZONS)
+    fig, axes = plt.subplots(
+        len(platforms),
+        len(horizons),
+        figsize=(3.1 * len(horizons), 2.7 * len(platforms) + 0.6),
+        sharex=True,
+        sharey=True,
+        squeeze=False,
+    )
+    for row, platform in enumerate(platforms):
+        color = PLATFORM_COLORS[platform]
+        for col, horizon in enumerate(horizons):
+            ax = axes[row, col]
+            ax.axhline(0, color=MUTED, lw=1)
+            table = gaps[platform].get(horizon)
+            if table is not None:
+                ax.fill_between(
+                    table["mean_price"],
+                    table["ci_low"] - table["mean_price"],
+                    table["ci_high"] - table["mean_price"],
+                    color=color,
+                    alpha=0.18,
+                    lw=0,
+                )
+                ax.plot(
+                    table["mean_price"],
+                    table["gap"],
+                    "-o",
+                    color=color,
+                    lw=2,
+                    ms=4,
+                    mec=SURFACE,
+                    mew=0.8,
+                )
+            if row == 0:
+                ax.set_title(f"{horizon} before close")
+            if col == 0:
+                ax.set_ylabel(f"{platform}\nResolved Yes − price")
+            if row == len(platforms) - 1:
+                ax.set_xlabel("Market price")
+            ax.set_xlim(0, 1)
+            ax.set_ylim(-0.15, 0.15)
+            _cents(ax, "x")
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v * 100:+.0f} pp"))
     fig.suptitle(
-        "Above zero: outcome more likely than priced",
+        "Calibration gap with 95% CI (above zero: outcome more likely than priced)",
         x=0.01,
+        y=1.0,
         ha="left",
         fontsize=12,
         fontweight="bold",
         color=INK,
     )
+    fig.tight_layout()
     return _save(fig, "calibration_gap.png")
 
 
