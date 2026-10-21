@@ -232,14 +232,14 @@ def returns_plot(table: pd.DataFrame, platform: str, horizon: str) -> Path:
 
 
 def slope_forest(rows: pd.DataFrame) -> Path:
-    """Calibration slope with 95% CI for each subgroup; 1 is perfect calibration."""
-    rows = rows.iloc[::-1].reset_index(drop=True)
-    fig, ax = plt.subplots(figsize=(6.4, 0.32 * len(rows) + 1.2))
-    ax.axvline(1, color=MUTED, lw=1, ls="--")
-    for platform, color in PLATFORM_COLORS.items():
-        sub = rows[rows["platform"] == platform]
-        if sub.empty:
-            continue
+    """Calibration slope with 95% CI per subgroup, one panel per platform; 1 is calibrated."""
+    platforms = [p for p in PLATFORM_COLORS if p in set(rows["platform"])]
+    height = 0.3 * rows.groupby("platform").size().max() + 1.4
+    fig, axes = plt.subplots(1, len(platforms), figsize=(5.4 * len(platforms), height), sharex=True)
+    for ax, platform in zip(np.atleast_1d(axes), platforms, strict=True):
+        sub = rows[rows["platform"] == platform].iloc[::-1].reset_index(drop=True)
+        color = PLATFORM_COLORS[platform]
+        ax.axvline(1, color=MUTED, lw=1, ls="--")
         ax.errorbar(
             sub["b"],
             sub.index,
@@ -250,11 +250,23 @@ def slope_forest(rows: pd.DataFrame) -> Path:
             color=color,
             mec=SURFACE,
             mew=0.8,
-            label=platform,
         )
-    ax.set_yticks(rows.index, rows["label"])
-    ax.grid(axis="y", visible=False)
-    ax.set_xlabel("Calibration slope b  (>1: longshots overpriced, favourites underpriced)")
-    ax.legend(loc="lower right")
-    ax.set_title("Where is the bias strongest?", loc="left")
+        ax.set_yticks(sub.index, sub["group"] + ": " + sub["level"])
+        # Separate the horizon, volume and category blocks.
+        for i in sub.index[1:]:
+            if sub.loc[i, "group"] != sub.loc[i - 1, "group"]:
+                ax.axhline(i - 0.5, color=GRID, lw=1)
+        ax.grid(axis="y", visible=False)
+        ax.set_title(platform, loc="left")
+        ax.set_xlabel("Calibration slope b")
+    fig.suptitle(
+        "b > 1: longshots overpriced, favourites underpriced.  b < 1: prices overconfident.",
+        x=0.01,
+        y=1.0,
+        ha="left",
+        fontsize=11,
+        fontweight="bold",
+        color=INK,
+    )
+    fig.tight_layout()
     return _save(fig, "slopes_by_group.png")
