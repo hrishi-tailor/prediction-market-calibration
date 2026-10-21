@@ -87,3 +87,19 @@ def test_returns_at_fair_prices_lose_only_fees_and_spread():
 def test_carry_distortion_is_tiny_at_30_days():
     assert models.carry_distortion(30, rate=0.05) == pytest.approx(0.00205, abs=1e-4)
     assert models.carry_distortion(0) == 0
+
+
+def test_fold_small_categories():
+    cats = pd.Series(["A"] * 5 + ["B"] * 2)
+    events = pd.Series(["e1", "e2", "e3", "e4", "e5", "e6", "e7"])
+    assert list(models.fold_small_categories(cats, events, 3)) == ["A"] * 5 + ["Other"] * 2
+
+
+def test_drivers_model_has_finite_intervals():
+    df = simulate(n=6_000, events=1_500)
+    df["category"] = np.where(np.arange(len(df)) % 2, "Sports", "Politics")
+    df.loc[:4, "category"] = "Tiny"
+    df["horizon"] = np.array(["30d", "7d", "1d", "1h"])[np.arange(len(df)) % 4]
+    out = models.drivers_model(df)
+    assert np.isfinite(out[["low", "high"]].to_numpy()).all()
+    assert not any("Tiny" in term for term in out.index)

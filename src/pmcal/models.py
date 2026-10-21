@@ -77,12 +77,22 @@ def volume_terciles(df: pd.DataFrame) -> pd.Series:
     )
 
 
-def drivers_model(df: pd.DataFrame) -> pd.DataFrame:
+def fold_small_categories(categories: pd.Series, events: pd.Series, min_events: int) -> pd.Series:
+    """Relabels categories with fewer than `min_events` distinct events as 'Other'."""
+    counts = events.groupby(categories).nunique()
+    small = counts[counts < min_events].index
+    return categories.where(~categories.isin(small), "Other")
+
+
+def drivers_model(df: pd.DataFrame, min_events: int = 50) -> pd.DataFrame:
     """One joint model: does the slope vary with category, horizon and volume?
 
     Each `lp:` term is the change in calibration slope relative to the baseline
     level (horizon 30d, the largest category), holding the others fixed.
+    Categories with few events are folded into 'Other': a handful of markets can
+    separate perfectly, which makes the clustered covariance singular.
     """
+    df = df.assign(category=fold_small_categories(df["category"], df["event_id"], min_events))
     data = df.assign(
         lp=logit(df["price"]),
         log_volume=np.log10(df["volume"]),
