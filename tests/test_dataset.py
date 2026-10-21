@@ -1,0 +1,75 @@
+from datetime import UTC, datetime, timedelta
+
+from pmcal import dataset
+
+CLOSE = datetime(2026, 1, 31, tzinfo=UTC)
+
+
+def ts(dt: datetime) -> int:
+    return int(dt.timestamp())
+
+
+def kalshi_market(**overrides):
+    market = {
+        "ticker": "FED-26JAN-H0",
+        "event_ticker": "FED-26JAN",
+        "series_ticker": "FED",
+        "category": "Economics",
+        "title": "Fed holds?",
+        "open_time": "2025-12-01T00:00:00Z",
+        "close_time": "2026-01-31T00:00:00Z",
+        "result": "yes",
+        "volume": 50_000.0,
+    }
+    return {**market, **overrides}
+
+
+def test_last_at_or_before():
+    assert dataset.last_at_or_before([10, 20, 30], 5) is None
+    assert dataset.last_at_or_before([10, 20, 30], 20) == 1
+    assert dataset.last_at_or_before([10, 20, 30], 25) == 1
+    assert dataset.last_at_or_before([10, 20, 30], 99) == 2
+
+
+def test_kalshi_uses_midpoint_of_quote_in_force():
+    candles = [
+        [ts(CLOSE - timedelta(days=40)), 0.30, 0.34, 0.32, 10],
+        [ts(CLOSE - timedelta(days=3)), 0.60, 0.62, 0.61, 10],
+        [ts(CLOSE - timedelta(minutes=30)), 0.97, 0.99, 0.98, 10],
+    ]
+    rows = {r["horizon"]: r for r in dataset.kalshi_rows(kalshi_market(), candles)}
+    # The quote set 40 days out is still in force 30 and 7 days out.
+    assert rows["30d"]["price"] == 0.32
+    assert rows["7d"]["price"] == 0.32
+    assert rows["1d"]["price"] == 0.61
+    # The 30-minute-before-close quote must not leak into the 1-hour horizon.
+    assert rows["1h"]["price"] == 0.61
+    assert all(r["outcome"] == 1 for r in rows.values())
+
+
+def test_kalshi_skips_wide_spreads_and_horizons_before_open():
+    candles = [[ts(CLOSE - timedelta(days=5)), 0.10, 0.90, None, 0]]
+    market = kalshi_market(open_time="2026-01-20T00:00:00Z", result="no")
+    assert dataset.kalshi_rows(market, candles) == []
+
+
+def test_polymarket_drops_stale_points():
+    market = {
+        "market_id": "1",
+        "event_id": "e",
+        "series_id": "e",
+        "category": "Politics",
+        "title": "x",
+        "volume": 1e5,
+        "open_time": "2025-12-01T00:00:00Z",
+        "close_time": "2026-01-31T00:00:00Z",
+        "outcome": 0,
+    }
+    points = [
+        [ts(CLOSE - timedelta(days=31)), 0.2],
+        [ts(CLOSE - timedelta(hours=1, minutes=5)), 0.1],
+    ]
+    rows = {r["horizon"]: r for r in dataset.polymarket_rows(market, points)}
+    assert rows["30d"]["price"] == 0.2
+    assert "7d" not in rows  # last point is 24 days old, beyond the 1-day tolerance
+    assert rows["1h"]["price"] == 0.1
