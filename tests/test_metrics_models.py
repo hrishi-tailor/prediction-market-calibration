@@ -91,14 +91,23 @@ def test_carry_distortion_is_tiny_at_30_days():
 
 
 def test_fold_small_categories():
+    cats = pd.Series(["A"] * 5 + ["B"] * 2 + ["C"] * 2)
+    events = pd.Series([f"e{i}" for i in range(9)])
+    folded = models.fold_small_categories(cats, events, 3)
+    assert list(folded) == ["A"] * 5 + ["Other"] * 4
+
+
+def test_fold_small_categories_merges_a_still_small_other():
     cats = pd.Series(["A"] * 5 + ["B"] * 2)
-    events = pd.Series(["e1", "e2", "e3", "e4", "e5", "e6", "e7"])
-    assert list(models.fold_small_categories(cats, events, 3)) == ["A"] * 5 + ["Other"] * 2
+    events = pd.Series([f"e{i}" for i in range(7)])
+    assert list(models.fold_small_categories(cats, events, 3)) == ["A"] * 7
 
 
 def test_drivers_model_has_finite_intervals():
     df = simulate(n=6_000, events=1_500)
-    df["category"] = np.where(np.arange(len(df)) % 2, "Sports", "Politics")
+    rng = np.random.default_rng(3)
+    # Random, so category is not collinear with the index-based horizon below.
+    df["category"] = rng.choice(["Sports", "Politics"], len(df))
     df.loc[:4, "category"] = "Tiny"
     df["horizon"] = np.array(["30d", "7d", "1d", "1h"])[np.arange(len(df)) % 4]
     out = models.drivers_model(df)

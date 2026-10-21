@@ -255,24 +255,23 @@ Interaction terms `lp:x` are the change in calibration slope for level x relativ
 
 | term | coef | low | high | p_value |
 |---|---|---|---|---|
-| lp | 0.937 | 0.833 | 1.041 | 7.3e-70 |
-| lp:C(category)[T.Climate and Weather] | 0.074 | -0.098 | 0.245 | 0.4 |
-| lp:C(category)[T.Commodities] | 0.136 | -0.241 | 0.513 | 0.48 |
-| lp:C(category)[T.Crypto] | 1.215 | 0.660 | 1.771 | 1.8e-05 |
-| lp:C(category)[T.Economics] | 0.100 | -0.095 | 0.296 | 0.31 |
-| lp:C(category)[T.Elections] | 0.114 | -0.011 | 0.240 | 0.073 |
-| lp:C(category)[T.Entertainment] | 0.059 | -0.048 | 0.166 | 0.28 |
-| lp:C(category)[T.Financials] | 0.205 | -0.001 | 0.410 | 0.051 |
-| lp:C(category)[T.Health] | 0.681 | -0.180 | 1.542 | 0.12 |
-| lp:C(category)[T.Mentions] | 0.027 | -0.104 | 0.158 | 0.69 |
-| lp:C(category)[T.Other] | 0.029 | -0.558 | 0.615 | 0.92 |
-| lp:C(category)[T.Politics] | 0.255 | 0.112 | 0.397 | 0.00045 |
-| lp:C(category)[T.Science and Technology] | 0.102 | -0.097 | 0.301 | 0.32 |
-| lp:C(category)[T.World] | -0.014 | -0.443 | 0.415 | 0.95 |
-| lp:C(horizon)[T.1d] | 0.096 | 0.025 | 0.167 | 0.0082 |
+| lp | 0.937 | 0.834 | 1.040 | 1.1e-70 |
+| lp:C(category)[T.Climate and Weather] | 0.073 | -0.098 | 0.244 | 0.4 |
+| lp:C(category)[T.Commodities] | 0.136 | -0.242 | 0.513 | 0.48 |
+| lp:C(category)[T.Crypto] | 1.215 | 0.659 | 1.771 | 1.8e-05 |
+| lp:C(category)[T.Economics] | 0.100 | -0.095 | 0.295 | 0.32 |
+| lp:C(category)[T.Elections] | 0.114 | -0.011 | 0.239 | 0.073 |
+| lp:C(category)[T.Entertainment] | 0.058 | -0.048 | 0.165 | 0.28 |
+| lp:C(category)[T.Financials] | 0.204 | -0.001 | 0.409 | 0.051 |
+| lp:C(category)[T.Health] | 0.681 | -0.180 | 1.541 | 0.12 |
+| lp:C(category)[T.Mentions] | 0.027 | -0.104 | 0.157 | 0.69 |
+| lp:C(category)[T.Politics] | 0.254 | 0.112 | 0.396 | 0.00044 |
+| lp:C(category)[T.Science and Technology] | 0.101 | -0.097 | 0.300 | 0.32 |
+| lp:C(category)[T.World] | -0.015 | -0.443 | 0.414 | 0.95 |
+| lp:C(horizon)[T.1d] | 0.096 | 0.025 | 0.168 | 0.008 |
 | lp:C(horizon)[T.1h] | 0.221 | 0.142 | 0.300 | 4.5e-08 |
 | lp:C(horizon)[T.7d] | 0.070 | 0.004 | 0.136 | 0.038 |
-| lp:log_volume_z | -0.065 | -0.099 | -0.030 | 0.00025 |
+| lp:log_volume_z | -0.065 | -0.099 | -0.030 | 0.00024 |
 
 ### Polymarket
 
