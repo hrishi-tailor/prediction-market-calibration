@@ -2,11 +2,144 @@
 
 When a prediction market prices an outcome at 70¢, does it happen 70% of the time?
 
-This project pulls thousands of resolved markets from Kalshi and Polymarket, measures each
-market's price at fixed horizons before it closed (30 days, 7 days, 1 day, 1 hour), and tests:
+This project tests that on **46,168 resolved markets** from Kalshi and Polymarket
+(118,093 price observations, 2021–2026). It measures each market's price at fixed
+horizons before close, compares it with what actually happened, tests for the
+favourite–longshot bias, and asks whether any mispricing survives trading costs.
 
-1. **Calibration**: do prices match realized frequencies?
-2. **Favourite–longshot bias**: are cheap contracts systematically overpriced?
-3. **Drivers**: does miscalibration depend on category, volume or time to close?
+## Findings
 
-Work in progress.
+1. **On average, yes, to within 1–2 percentage points.** Across all price buckets,
+   realized frequencies sit within about 1pp of Kalshi prices and 1–3pp of
+   Polymarket prices (expected calibration error).
+2. **Kalshi has a favourite–longshot bias, and it grows as close approaches.** The
+   calibration slope (1 = perfectly calibrated, above 1 = longshots overpriced) rises
+   from 1.02 thirty days out to **1.11 one day out and 1.22 one hour out**. Part of
+   that is Kalshi's 1¢ tick floor at the extremes, but the bias survives with the
+   tails excluded (1.08 at one day, 95% CI 1.02–1.14).
+3. **The bias lives in thin markets.** Kalshi's least-traded third of markets has a
+   slope of 1.18; the most-traded third is calibrated (1.02). Politics is the most
+   biased category (1.28).
+4. **Polymarket shows no favourite–longshot bias.** If anything its mid-range prices
+   are slightly *overconfident* close to resolution (slope 0.91–0.93 on 5–95¢
+   prices), most of all in high-volume markets (0.89) and weather markets (0.82).
+5. **None of it is a free lunch.** Buying Kalshi longshots at the ask loses heavily:
+   **−89% per dollar for 0–2¢ contracts**, −34% at 10–20¢. Buying favourites or fading
+   longshots loses only 0–2% after the spread and taker fee. No price bucket earns a
+   significantly positive return.
+
+![Calibration gap by platform and horizon](figures/calibration_gap.png)
+
+Each point is a price bucket: how much more often the outcome happened than the
+price implied. Shaded bands are 95% confidence intervals, clustered by event.
+
+![Returns from trading at the quote on Kalshi](figures/returns_by_price.png)
+
+![Calibration slope by subgroup](figures/slopes_by_group.png)
+
+More figures: [reliability diagrams by horizon](figures/reliability_by_horizon.png),
+[Kalshi vs Polymarket](figures/platform_comparison.png). Every number above comes from
+[`reports/results.md`](reports/results.md), which the pipeline regenerates.
+
+## How it works
+
+The key design decisions, each explained in [`docs/methodology.md`](docs/methodology.md):
+
+- **Prices at fixed horizons, not final prices.** By the time a market closes the
+  outcome is usually known, so final prices are near 0 or 1 and trivially
+  "calibrated". Each market is priced 30 days, 7 days, 1 day and 1 hour before it
+  closed, using only data from before that moment.
+- **Bid/ask midpoints on Kalshi,** with spreads over 10¢ dropped; hourly price history
+  on Polymarket.
+- **Sampling caps,** so Kalshi's hourly temperature and index series (thousands of
+  near-identical markets) don't drown out everything else: at most 10 markets per
+  series or event, chosen with a fixed seed.
+- **Event-clustered uncertainty.** Markets in the same event resolve together (one
+  bracket of a CPI print wins), so every interval comes from a bootstrap or
+  standard errors that treat the event, not the market, as the unit.
+- **A logistic calibration regression,** `P(yes) = sigmoid(a + b·logit(price))`, to
+  test the favourite–longshot bias: b > 1 means longshots are overpriced. The slope
+  doesn't depend on which side of a market is labelled "Yes".
+- **Three traps checked explicitly:**
+  - *Tick size:* Kalshi can't price a near-certain outcome above about 98.5¢, which
+    alone mimics the bias. Slopes are refitted on 5–95¢ prices.
+  - *Stopping time:* "Will X happen by D?" markets close when X happens, so their
+    close time depends on their outcome. 10% of Polymarket markets closed early;
+    results are reported with and without them.
+  - *Cost of capital:* discounting locked-up money also pulls prices toward 50¢, but
+    by at most 0.21¢ at 30 days, far too little to explain the bias.
+
+## Data
+
+| | Kalshi | Polymarket |
+|---|---|---|
+| Markets | 16,533 | 29,635 |
+| Events | 9,070 | 20,522 |
+| Observations | 44,225 | 73,868 |
+| Closing dates | Jul 2021 – Aug 2026 | Dec 2022 – Oct 2026 |
+| Source | [Trade API v2](https://docs.kalshi.com) (public market data) | Gamma + CLOB public APIs |
+
+Both APIs are public and need no key. Kalshi markets with at least 1,000 contracts
+traded and Polymarket markets with at least $10,000 traded are eligible; from those,
+25,000 Kalshi and 30,000 Polymarket markets were sampled. Some sampled markets
+contribute no observations because they were open for less than an hour or never
+had a quote within 10¢.
+
+## Reproduce
+
+Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync
+make fetch-kalshi       # ~3 hours: rate-limited to 4 requests/second
+make fetch-polymarket   # ~4 hours
+make build              # data/observations.parquet
+make analyze            # figures/ and reports/
+```
+
+Fetching is resumable: raw responses are cached under `data/raw/` and never
+re-downloaded, so an interrupted run picks up where it stopped. Sampling is
+seeded, so a rerun selects the same markets, though new markets will have closed
+since.
+
+```bash
+make test               # pytest
+make lint               # ruff
+```
+
+## Layout
+
+```
+src/pmcal/
+  http.py         rate-limited client with retries
+  kalshi.py       series discovery, sampling, hourly candles
+  polymarket.py   event discovery, sampling, price history, close times
+  dataset.py      per-horizon prices -> data/observations.parquet
+  metrics.py      reliability tables, Brier decomposition, cluster bootstrap
+  models.py       calibration regression, subgroup slopes, returns
+  plots.py        figures
+  report.py       runs everything, writes reports/results.md
+tests/            unit tests on synthetic data with known answers
+docs/             methodology
+```
+
+The tests check the statistics against simulations with known answers: the
+regression recovers a planted slope, clustered intervals widen when outcomes are
+shared within events, the Brier decomposition adds up, and no future quote leaks
+into a horizon.
+
+## Limitations
+
+- Lifetime volume is measured after the fact, so "high volume" means markets that
+  *ended up* liquid, not liquidity at the moment of the price.
+- Polymarket's price history is a single price per point with no bid or ask, so
+  Polymarket returns can't be computed honestly and aren't reported.
+- Kalshi doesn't expose a scheduled close separate from the actual one, so the
+  stopping-time check covers Polymarket only.
+- Categories are each platform's own labels and don't map one-to-one across
+  platforms; the two platforms also list very different mixes of markets, so their
+  Brier scores aren't directly comparable.
+
+## License
+
+MIT
