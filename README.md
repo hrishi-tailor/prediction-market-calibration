@@ -89,6 +89,17 @@ had a quote within 10¢.
 
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
+The quickest route uses the dataset attached to the
+[v1.0.0 release](https://github.com/hrishi-tailor/prediction-market-calibration/releases/tag/v1.0.0):
+
+```bash
+uv sync
+gh release download v1.0.0 -p observations.parquet -D data
+make analyze            # figures/ and reports/, in about a minute
+```
+
+To rebuild everything from the APIs:
+
 ```bash
 uv sync
 make fetch-kalshi       # ~3 hours: rate-limited to 4 requests/second
