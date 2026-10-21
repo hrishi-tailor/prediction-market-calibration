@@ -3,7 +3,9 @@
 Events are discovered week by week from the Gamma API (offsets are capped, so
 short windows keep each listing small). Only plain Yes/No markets that resolved
 cleanly to 1 or 0 with enough volume are kept, at most
-`POLYMARKET_MAX_MARKETS_PER_EVENT` per event. Prices come from the CLOB
+`POLYMARKET_MAX_MARKETS_PER_EVENT` per event. Markets that never traded on the
+order book (the 2020-22 AMM era) are skipped, since they have no price history.
+Prices come from the CLOB
 `prices-history` endpoint for the Yes token. Hourly history is not available for
 older markets, so the fetcher falls back to 12-hourly and then daily points; the
 dataset builder drops any point too old for its horizon.
@@ -96,6 +98,9 @@ def slim_market(market: dict[str, Any], event: dict[str, Any], category: str) ->
     close = _earliest(market.get("endDate"), market.get("closedTime"))
     opened = market.get("startDate") or market.get("createdAt")
     if outcome is None or len(tokens) != 2 or not close or not opened:
+        return None
+    # Markets from the AMM era (before the order book) have no price history.
+    if not market.get("enableOrderBook"):
         return None
     volume = float(market.get("volumeNum") or market.get("volume") or 0)
     if volume < config.POLYMARKET_MIN_VOLUME:

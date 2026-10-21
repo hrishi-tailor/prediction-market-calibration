@@ -13,6 +13,7 @@ def market(**overrides):
         "endDate": "2025-03-01T12:00:00Z",
         "closedTime": "2025-03-03 18:30:50+00",
         "volumeNum": 50_000,
+        "enableOrderBook": True,
     }
     return {**m, **overrides}
 
@@ -35,8 +36,9 @@ def test_slim_market_uses_earlier_of_end_and_closed_time():
     )
 
 
-def test_slim_market_rejects_thin_markets():
+def test_slim_market_rejects_thin_and_amm_markets():
     assert polymarket.slim_market(market(volumeNum=10), {"id": 9}, "Politics") is None
+    assert polymarket.slim_market(market(enableOrderBook=False), {"id": 9}, "Politics") is None
 
 
 def test_categorize_uses_priority_order():

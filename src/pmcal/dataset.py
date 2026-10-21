@@ -155,9 +155,12 @@ def _polymarket_all() -> Iterable[dict]:
 
 
 def build() -> pd.DataFrame:
-    rows = list(_kalshi_all())
-    if (config.RAW_DIR / "polymarket").exists():
-        rows.extend(_polymarket_all())
+    rows: list[dict] = []
+    for platform, source in (("kalshi", _kalshi_all), ("polymarket", _polymarket_all)):
+        if (config.RAW_DIR / platform / "markets.json").exists():
+            rows.extend(source())
+        else:
+            log.warning("No %s markets fetched yet; skipping", platform)
     df = pd.DataFrame(rows)
     df["horizon"] = pd.Categorical(df["horizon"], categories=list(config.HORIZONS), ordered=True)
     df.to_parquet(config.DATASET_PATH, index=False)
