@@ -1,6 +1,7 @@
 import time
 
 import httpx
+from tenacity import wait_none
 
 from pmcal.http import ApiClient, RateLimiter
 
@@ -14,7 +15,8 @@ def test_rate_limiter_spaces_calls():
     assert time.monotonic() - start >= 0.09
 
 
-def test_get_retries_on_429_then_succeeds():
+def test_get_retries_on_429_then_succeeds(monkeypatch):
+    monkeypatch.setattr(ApiClient.get.retry, "wait", wait_none())
     calls = {"n": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
