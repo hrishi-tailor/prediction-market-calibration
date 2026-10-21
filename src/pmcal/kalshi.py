@@ -161,7 +161,7 @@ def fetch_candles(client: ApiClient, market: dict[str, Any]) -> None:
     write_json(path, condense_candles((body or {}).get("candlesticks") or []))
 
 
-def run(rate: float = 7.0, workers: int = 6) -> None:
+def run(rate: float = 5.0, workers: int = 4) -> None:
     with ApiClient(BASE_URL, rate=rate) as client:
         series = [s for s in fetch_series(client) if s["volume"] >= config.KALSHI_MIN_VOLUME]
         log.info("Kalshi: %d series with enough volume", len(series))
