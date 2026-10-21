@@ -68,3 +68,22 @@ def test_select_markets_caps_series_then_total(monkeypatch):
     assert len(out) == 5
     assert max(sum(m["series_ticker"] == s for m in out) for s in "ABC") <= 3
     assert out == kalshi.select_markets(listed)
+
+
+def test_fetch_candles_escapes_tickers_and_survives_bad_requests(tmp_path, monkeypatch):
+    import httpx
+
+    monkeypatch.setattr(kalshi, "RAW", tmp_path)
+    seen = []
+
+    class FakeClient:
+        def get(self, path, params):
+            seen.append(path)
+            raise httpx.HTTPStatusError(
+                "bad", request=httpx.Request("GET", "x"), response=httpx.Response(400)
+            )
+
+    market = {**_market(ticker="GPT%-23DEC31"), "series_ticker": "GPT%"}
+    kalshi.fetch_candles(FakeClient(), market)
+    assert "GPT%25-23DEC31" in seen[0]
+    assert kalshi.candle_path(market["ticker"]).exists()

@@ -18,7 +18,9 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
+import httpx
 from tqdm import tqdm
 
 from pmcal import config
@@ -169,11 +171,18 @@ def fetch_candles(client: ApiClient, market: dict[str, Any]) -> None:
         "end_ts": int(close.timestamp()),
         "period_interval": 60,
     }
-    live = f"/series/{market['series_ticker']}/markets/{market['ticker']}/candlesticks"
-    historical = f"/historical/markets/{market['ticker']}/candlesticks"
+    # A few old tickers contain characters such as '%' that must be escaped in a path.
+    ticker, series = quote(market["ticker"], safe=""), quote(market["series_ticker"], safe="")
+    live = f"/series/{series}/markets/{ticker}/candlesticks"
+    historical = f"/historical/markets/{ticker}/candlesticks"
     # Markets settled before Kalshi's historical cutoff only exist on /historical.
     first, second = (historical, live) if close < HISTORICAL_CUTOFF else (live, historical)
-    body = client.get(first, params) or client.get(second, params)
+    try:
+        body = client.get(first, params) or client.get(second, params)
+    except httpx.HTTPStatusError as exc:
+        # One malformed market should not stop a multi-hour fetch; record it as empty.
+        log.warning("No candles for %s: %s", market["ticker"], exc.response.status_code)
+        body = None
     write_json(path, condense_candles((body or {}).get("candlesticks") or []))
 
 
