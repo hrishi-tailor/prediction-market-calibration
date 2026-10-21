@@ -125,31 +125,56 @@ def event_markets(event: dict[str, Any]) -> list[dict[str, Any]]:
     return markets
 
 
-def fetch_week(client: ApiClient, start: datetime) -> list[dict[str, Any]]:
-    path = RAW / "weeks" / f"{start:%Y-%m-%d}.json"
-    if path.exists():
-        return read_json(path)
-    end = start + timedelta(days=7)
-    markets: list[dict[str, Any]] = []
+# Gamma rejects offsets past roughly 2,000, so a busy window is split in half.
+MAX_OFFSET = 2_000
+
+
+class WindowTooLarge(Exception):
+    pass
+
+
+def _list_window(client: ApiClient, start: datetime, end: datetime) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
     offset = 0
     while True:
-        events = client.get(
+        if offset >= MAX_OFFSET:
+            raise WindowTooLarge
+        page = client.get(
             "/events",
             {
                 "closed": "true",
                 "end_date_min": start.isoformat().replace("+00:00", "Z"),
                 "end_date_max": end.isoformat().replace("+00:00", "Z"),
+                # An event's volume is at least that of any of its markets.
+                "volume_min": config.POLYMARKET_MIN_VOLUME,
                 "limit": PAGE_SIZE,
                 "offset": offset,
             },
         )
-        if not events:
-            break
-        for event in events:
-            markets.extend(event_markets(event))
-        if len(events) < PAGE_SIZE:
-            break
+        if not page:
+            return events
+        events.extend(page)
+        if len(page) < PAGE_SIZE:
+            return events
         offset += PAGE_SIZE
+
+
+def list_events(client: ApiClient, start: datetime, end: datetime) -> list[dict[str, Any]]:
+    """All closed events ending in [start, end), splitting the window when it is too busy."""
+    try:
+        return _list_window(client, start, end)
+    except WindowTooLarge:
+        mid = start + (end - start) / 2
+        return list_events(client, start, mid) + list_events(client, mid, end)
+
+
+def fetch_week(client: ApiClient, start: datetime) -> list[dict[str, Any]]:
+    path = RAW / "weeks" / f"{start:%Y-%m-%d}.json"
+    if path.exists():
+        return read_json(path)
+    markets: list[dict[str, Any]] = []
+    for event in list_events(client, start, start + timedelta(days=7)):
+        markets.extend(event_markets(event))
     write_json(path, markets)
     return markets
 

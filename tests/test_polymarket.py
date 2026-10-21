@@ -54,3 +54,23 @@ def test_event_markets_caps_per_event():
     out = polymarket.event_markets(event)
     assert len(out) == config.POLYMARKET_MAX_MARKETS_PER_EVENT
     assert out == polymarket.event_markets(event)
+
+
+def test_list_events_splits_busy_windows(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    calls = []
+
+    class FakeClient:
+        def get(self, path, params):
+            start = datetime.fromisoformat(params["end_date_min"].replace("Z", "+00:00"))
+            end = datetime.fromisoformat(params["end_date_max"].replace("Z", "+00:00"))
+            calls.append((start, end, params["offset"]))
+            # Windows longer than 2 days are "too busy": always return full pages.
+            if end - start > timedelta(days=2):
+                return [{"id": 0}] * polymarket.PAGE_SIZE
+            return [{"id": 1}] if params["offset"] == 0 else []
+
+    start = datetime(2025, 1, 1, tzinfo=UTC)
+    events = polymarket.list_events(FakeClient(), start, start + timedelta(days=8))
+    assert len(events) == 4  # 8 days split into four 2-day windows
