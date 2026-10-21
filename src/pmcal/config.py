@@ -43,5 +43,7 @@ KALSHI_MAX_MARKETS = 25_000
 # Series with less lifetime volume can hold only a handful of eligible markets.
 KALSHI_MIN_SERIES_VOLUME = 10_000
 POLYMARKET_MAX_MARKETS_PER_EVENT = 10
+# Overall cap on Polymarket markets, sampled uniformly, to bound fetch time.
+POLYMARKET_MAX_MARKETS = 30_000
 
 RANDOM_SEED = 20261021
