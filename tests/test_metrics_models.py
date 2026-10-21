@@ -77,11 +77,12 @@ def test_slopes_by_drops_small_groups():
 
 
 def test_returns_at_fair_prices_lose_only_fees_and_spread():
-    df = simulate(n=50_000)
+    df = simulate(n=50_000).assign(bid=lambda d: np.clip(d["price"] - 0.005, 0, 1))
     table = models.returns_by_bucket(df, n_boot=100)
     mid = table[(table["bin_low"] >= 0.3) & (table["bin_high"] <= 0.7)]
-    assert (mid["mean_return_no_fee"].abs() < 0.05).all()
-    assert (mid["mean_return"] < mid["mean_return_no_fee"]).all()
+    assert (mid["yes_no_fee_return"].abs() < 0.05).all()
+    assert (mid["yes_return"] < mid["yes_no_fee_return"]).all()
+    assert (mid["no_return"].abs() < 0.08).all()
 
 
 def test_carry_distortion_is_tiny_at_30_days():

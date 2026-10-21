@@ -40,6 +40,10 @@ def summary_rows(df: pd.DataFrame) -> pd.DataFrame:
     for (platform, horizon), g in df.groupby(["platform", "horizon"], observed=True):
         parts = metrics.murphy_decomposition(g["price"], g["outcome"])
         fit = models.calibration_fit(g)
+        # Kalshi quotes in whole cents, so near-certain outcomes cannot be priced
+        # above ~99c; that floor alone pushes extreme prices toward 50c and mimics
+        # the bias. Refitting on 5-95c prices shows how much survives without it.
+        mid = models.calibration_fit(g[g["price"].between(0.05, 0.95)])
         rows.append(
             {
                 "platform": platform,
@@ -56,6 +60,9 @@ def summary_rows(df: pd.DataFrame) -> pd.DataFrame:
                 "b_low": fit["b_low"],
                 "b_high": fit["b_high"],
                 "p_b1": fit["p_b1"],
+                "b_mid": mid["b"],
+                "b_mid_low": mid["b_low"],
+                "b_mid_high": mid["b_high"],
             }
         )
     return pd.DataFrame(rows)
@@ -171,13 +178,17 @@ def write_markdown(df, summary, reliability, returns, slopes, drivers, carry) ->
         "`b` is the calibration slope from `P(yes) = sigmoid(a + b·logit(price))`, with "
         "95% CIs clustered by event; `p(b=1)` tests perfect calibration. `reliability` is "
         "the calibration part of the Brier score (lower is better), `resolution` the "
-        "informative part (higher is better).",
+        "informative part (higher is better). `b_5_95` refits the slope on prices "
+        "between 5¢ and 95¢ only, removing the tick-size floor at the extremes.",
         "",
     ]
     lines += [
         md_table(
             summary.assign(
-                b_ci=summary.apply(lambda r: f"[{r.b_low:.2f}, {r.b_high:.2f}]", axis=1)
+                b_ci=summary.apply(lambda r: f"[{r.b_low:.2f}, {r.b_high:.2f}]", axis=1),
+                b_5_95=summary.apply(
+                    lambda r: f"{r.b_mid:.3f} [{r.b_mid_low:.2f}, {r.b_mid_high:.2f}]", axis=1
+                ),
             )[
                 [
                     "platform",
@@ -193,6 +204,7 @@ def write_markdown(df, summary, reliability, returns, slopes, drivers, carry) ->
                     "b",
                     "b_ci",
                     "p_b1",
+                    "b_5_95",
                 ]
             ].rename(columns={"p_b1": "p(b=1)"}),
             {
@@ -221,17 +233,25 @@ def write_markdown(df, summary, reliability, returns, slopes, drivers, carry) ->
             "",
         ]
 
-    lines += [f"## Returns from buying Yes on Kalshi, {HEADLINE_HORIZON} before close", ""]
     lines += [
-        "Buying at the ask, with Kalshi's taker fee `0.07·P·(1−P)` per contract. "
-        "CIs are event-clustered bootstrap.",
+        f"## Returns from trading at the quote on Kalshi, {HEADLINE_HORIZON} before close",
+        "",
+    ]
+    lines += [
+        "Buying Yes at the ask, or No at 1 − bid, each paying Kalshi's taker fee "
+        "`0.07·P·(1−P)` per contract. Buckets are by Yes midpoint. CIs are "
+        "event-clustered bootstrap.",
         "",
     ]
     r = returns.assign(
         bucket=returns.apply(lambda r: f"{r.bin_low * 100:.0f}–{r.bin_high * 100:.0f}¢", axis=1),
-        ci=returns.apply(lambda r: f"[{r.ci_low:+.1%}, {r.ci_high:+.1%}]", axis=1),
-    )[["bucket", "n", "mean_return_no_fee", "mean_return", "ci"]]
-    lines += [md_table(r, {"mean_return_no_fee": "+.1%", "mean_return": "+.1%"}), ""]
+        yes_ci=returns.apply(lambda r: f"[{r.yes_ci_low:+.1%}, {r.yes_ci_high:+.1%}]", axis=1),
+        no_ci=returns.apply(lambda r: f"[{r.no_ci_low:+.1%}, {r.no_ci_high:+.1%}]", axis=1),
+    )[["bucket", "n", "yes_no_fee_return", "yes_return", "yes_ci", "no_return", "no_ci"]]
+    lines += [
+        md_table(r, {c: "+.1%" for c in ("yes_no_fee_return", "yes_return", "no_return")}),
+        "",
+    ]
 
     lines += ["## Calibration slope by subgroup", ""]
     s = slopes.assign(ci=slopes.apply(lambda r: f"[{r.b_low:.2f}, {r.b_high:.2f}]", axis=1))[

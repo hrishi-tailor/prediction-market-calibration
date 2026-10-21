@@ -168,48 +168,41 @@ def platform_comparison(tables: dict[str, pd.DataFrame], horizon: str) -> Path:
 
 
 def returns_plot(table: pd.DataFrame, platform: str, horizon: str) -> Path:
-    fig, ax = plt.subplots(figsize=(6.4, 3.8))
-    x = (table["bin_low"] + table["bin_high"]) / 2
+    """Return per $1 from buying Yes vs buying No in each bucket, after fees."""
+    fig, ax = plt.subplots(figsize=(7.2, 4.0))
     labels = [
         f"{lo * 100:.0f}–{hi * 100:.0f}¢"
         for lo, hi in zip(table["bin_low"], table["bin_high"], strict=True)
     ]
-    pos = np.arange(len(x))
+    pos = np.arange(len(table))
+    width = 0.38
     ax.axhline(0, color=MUTED, lw=1)
-    ax.bar(
-        pos,
-        table["mean_return"],
-        width=0.7,
-        color=SERIES[0],
-        label="after taker fee",
-        zorder=2,
-    )
-    ax.errorbar(
-        pos,
-        table["mean_return"],
-        yerr=[table["mean_return"] - table["ci_low"], table["ci_high"] - table["mean_return"]],
-        fmt="none",
-        ecolor=INK_2,
-        lw=1,
-        zorder=3,
-    )
-    ax.scatter(
-        pos,
-        table["mean_return_no_fee"],
-        marker="_",
-        s=160,
-        color=INK,
-        lw=2,
-        label="before fee",
-        zorder=4,
-    )
+    for offset, side, color in ((-width / 2, "yes", SERIES[0]), (width / 2, "no", SERIES[1])):
+        mean = table[f"{side}_return"]
+        ax.bar(
+            pos + offset,
+            mean,
+            width=width - 0.04,
+            color=color,
+            label=f"Buy {side.capitalize()}",
+            zorder=2,
+        )
+        ax.errorbar(
+            pos + offset,
+            mean,
+            yerr=[mean - table[f"{side}_ci_low"], table[f"{side}_ci_high"] - mean],
+            fmt="none",
+            ecolor=INK_2,
+            lw=1,
+            zorder=3,
+        )
     ax.set_xticks(pos, labels, rotation=45, ha="right")
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v * 100:+.0f}%"))
-    ax.set_ylabel("Average return per $1")
-    ax.set_xlabel("Price paid for Yes")
+    ax.set_ylabel("Average return per $1, after fees")
+    ax.set_xlabel("Yes price (midpoint)")
     ax.grid(axis="x", visible=False)
     ax.legend(loc="lower right")
-    ax.set_title(f"{platform}: buying Yes at the ask, {horizon} before close", loc="left")
+    ax.set_title(f"{platform}: trading at the quote, {horizon} before close", loc="left")
     return _save(fig, "returns_by_price.png")
 
 

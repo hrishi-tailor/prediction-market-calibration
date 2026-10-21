@@ -134,52 +134,47 @@ def kalshi_taker_fee(price: np.ndarray) -> np.ndarray:
 def returns_by_bucket(
     df: pd.DataFrame, edges: np.ndarray = BIN_EDGES, n_boot: int = 1000
 ) -> pd.DataFrame:
-    """Average return per dollar from buying Yes in each price bucket.
+    """Average return per dollar from buying Yes, or buying No, in each price bucket.
 
-    Kalshi buys pay the ask plus the taker fee. Polymarket has no order-book
-    history here, so it buys at the sampled price with no fee, which flatters it.
+    Needs bid/ask quotes (Kalshi). Buying Yes pays the ask; buying No pays
+    1 - bid (the No ask). Both pay the taker fee. Buckets are by the Yes
+    midpoint, so a low bucket's No column is the return from fading longshots.
     """
-    is_kalshi = (df["platform"] == "Kalshi").to_numpy()
-    price = df["price"].to_numpy(float)
-    ask = df["ask"].to_numpy(float)
-    cost = np.where(is_kalshi, ask + kalshi_taker_fee(ask), price)
-    cost_no_fee = np.where(is_kalshi, ask, price)
+    bid, ask = df["bid"].to_numpy(float), df["ask"].to_numpy(float)
     y = df["outcome"].to_numpy(float)
-    ok = cost > 0
-    frame = df.loc[ok].assign(
-        ret=(y[ok] - cost[ok]) / cost[ok], ret_no_fee=(y[ok] - cost_no_fee[ok]) / cost_no_fee[ok]
-    )
-    bins = assign_bins(frame["price"], edges)
+    no_ask = 1 - bid
+    yes_cost, no_cost = ask + kalshi_taker_fee(ask), no_ask + kalshi_taker_fee(no_ask)
+    # A zero ask means nothing could be bought on that side.
+    yes_ok, no_ok = (ask > 0).astype(float), (no_ask > 0).astype(float)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        returns = {
+            "yes": np.where(ask > 0, (y - yes_cost) / yes_cost, 0.0),
+            "yes_no_fee": np.where(ask > 0, (y - ask) / ask, 0.0),
+            "no": np.where(no_ask > 0, ((1 - y) - no_cost) / no_cost, 0.0),
+        }
+    bins = assign_bins(df["price"], edges)
     n_bins = len(edges) - 1
-    codes = pd.factorize(frame["event_id"])[0]
+    codes = pd.factorize(df["event_id"])[0]
     n_clusters = codes.max() + 1
     flat = codes * n_bins + bins
 
-    def sums(values):
+    def sums(values: np.ndarray) -> np.ndarray:
         return np.bincount(flat, weights=values, minlength=n_clusters * n_bins).reshape(
             n_clusters, n_bins
         )
 
-    n = sums(np.ones(len(frame)))
-    r = sums(frame["ret"].to_numpy())
-    r0 = sums(frame["ret_no_fee"].to_numpy())
     w = bootstrap_weights(n_clusters, n_boot, seed=config.RANDOM_SEED + 1)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        boot = (w @ r) / (w @ n)
-        lo, hi = np.nanpercentile(boot, [2.5, 97.5], axis=0)
-        mean = r.sum(0) / n.sum(0)
-        mean0 = r0.sum(0) / n.sum(0)
-    table = pd.DataFrame(
-        {
-            "bin_low": edges[:-1],
-            "bin_high": edges[1:],
-            "n": n.sum(0).astype(int),
-            "mean_return": mean,
-            "mean_return_no_fee": mean0,
-            "ci_low": lo,
-            "ci_high": hi,
-        }
-    )
+    columns: dict[str, np.ndarray] = {"n": np.bincount(bins, minlength=n_bins)}
+    for name, counts in (("yes", yes_ok), ("yes_no_fee", yes_ok), ("no", no_ok)):
+        n, r = sums(counts), sums(returns[name])
+        with np.errstate(invalid="ignore", divide="ignore"):
+            columns[f"{name}_return"] = r.sum(0) / n.sum(0)
+            if name != "yes_no_fee":
+                boot = (w @ r) / (w @ n)
+                columns[f"{name}_ci_low"], columns[f"{name}_ci_high"] = np.nanpercentile(
+                    boot, [2.5, 97.5], axis=0
+                )
+    table = pd.DataFrame({"bin_low": edges[:-1], "bin_high": edges[1:], **columns})
     return table[table["n"] > 0].reset_index(drop=True)
 
 
