@@ -4,7 +4,7 @@
 
 When a prediction market prices an outcome at 70¢, does it happen 70% of the time?
 
-**[Explore the interactive results →](https://hrishi-tailor.github.io/prediction-market-calibration/)**
+**[Explore the interactive results →](https://hrishitailor.com/prediction-markets/)**
 
 This project tests that on **46,168 resolved markets** from Kalshi and Polymarket
 (118,093 price observations, 2021–2026). It measures each market's price at fixed
@@ -124,8 +124,9 @@ make lint               # ruff
 
 ## Website
 
-The [project page](https://hrishi-tailor.github.io/prediction-market-calibration/) is a
-static site in `site/`, deployed to GitHub Pages on every push to `main`. It reads only
+The [project page](https://hrishitailor.com/prediction-markets/) is a
+static site in `site/`, deployed to GitHub Pages on every push to `main` and served on
+hrishitailor.com through a Vercel rewrite. It reads only
 `site/data/results.json`, which `make analyze` writes alongside `reports/results.md`, so
 the page always shows the latest run. To preview it locally:
 
