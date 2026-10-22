@@ -4,6 +4,8 @@
 
 When a prediction market prices an outcome at 70¢, does it happen 70% of the time?
 
+**[Explore the interactive results →](https://hrishi-tailor.github.io/prediction-market-calibration/)**
+
 This project tests that on **46,168 resolved markets** from Kalshi and Polymarket
 (118,093 price observations, 2021–2026). It measures each market's price at fixed
 horizons before close, compares it with what actually happened, tests for the
@@ -120,6 +122,17 @@ make test               # pytest
 make lint               # ruff
 ```
 
+## Website
+
+The [project page](https://hrishi-tailor.github.io/prediction-market-calibration/) is a
+static site in `site/`, deployed to GitHub Pages on every push to `main`. It reads only
+`site/data/results.json`, which `make analyze` writes alongside `reports/results.md`, so
+the page always shows the latest run. To preview it locally:
+
+```bash
+python3 -m http.server --directory site
+```
+
 ## Layout
 
 ```
@@ -132,6 +145,8 @@ src/pmcal/
   models.py       calibration regression, subgroup slopes, returns
   plots.py        figures
   report.py       runs everything, writes reports/results.md
+  site_data.py    exports the website's numbers to site/data/results.json
+site/             project website (HTML, CSS, Observable Plot)
 tests/            unit tests on synthetic data with known answers
 docs/             methodology
 ```
