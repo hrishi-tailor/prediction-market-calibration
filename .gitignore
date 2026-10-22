@@ -1,5 +1,5 @@
-# Raw API responses and built datasets are reproducible with `make data`.
-data/
+# Raw API responses and built datasets are reproducible with the fetch and build steps (see README).
+/data/
 .venv/
 __pycache__/
 *.pyc
