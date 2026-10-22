@@ -11,6 +11,7 @@ RAW_DIR = DATA_DIR / "raw"
 DATASET_PATH = DATA_DIR / "observations.parquet"
 FIGURES_DIR = ROOT / "figures"
 REPORTS_DIR = ROOT / "reports"
+SITE_DATA_PATH = ROOT / "site" / "data" / "results.json"
 
 # Horizons before close at which a market's price is observed. The price at close
 # is useless for calibration: by then the outcome is usually known.

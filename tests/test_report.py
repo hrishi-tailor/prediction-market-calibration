@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 
 import numpy as np
@@ -44,6 +45,7 @@ def test_report_runs_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DATASET_PATH", tmp_path / "obs.parquet")
     monkeypatch.setattr(config, "FIGURES_DIR", tmp_path / "figures")
     monkeypatch.setattr(config, "REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr(config, "SITE_DATA_PATH", tmp_path / "site" / "results.json")
     synthetic_dataset().to_parquet(config.DATASET_PATH)
 
     result = report.run()
@@ -60,6 +62,11 @@ def test_report_runs_end_to_end(tmp_path, monkeypatch):
     assert "## Calibration by platform and horizon" in text
     assert "## Sensitivity: Polymarket markets that closed on schedule" in text
     assert len(result["summary"]) == 8
+    site = json.loads((tmp_path / "site" / "results.json").read_text())
+    assert site["totals"]["markets"] == 6_000
+    assert {r["platform"] for r in site["reliability"]} == {"Kalshi", "Polymarket"}
+    assert site["headline"]["kalshi"]["horizon"] == "1d"
+    assert "NaN" not in (tmp_path / "site" / "results.json").read_text()
     # Synthetic prices are calibrated (with noise), so slopes should be near 1.
     for row in result["summary"]:
         assert 0.8 < row["b"] < 1.2

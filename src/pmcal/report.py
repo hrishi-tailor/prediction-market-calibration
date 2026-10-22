@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from pmcal import config, dataset, metrics, models, plots
+from pmcal import config, dataset, metrics, models, plots, site_data
 
 log = logging.getLogger(__name__)
 
@@ -155,6 +155,11 @@ def run() -> dict[str, Any]:
     }
     with open(config.REPORTS_DIR / "summary.json", "w") as f:
         json.dump(result, f, indent=2, default=str)
+    site_data.write(
+        site_data.build(
+            df, summary, reliability, returns, slopes, carry, on_time_summary, HEADLINE_HORIZON
+        )
+    )
     log.info("Wrote figures to %s and report to %s", config.FIGURES_DIR, config.REPORTS_DIR)
     return result
 
