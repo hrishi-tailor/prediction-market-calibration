@@ -12,6 +12,7 @@ DATASET_PATH = DATA_DIR / "observations.parquet"
 FIGURES_DIR = ROOT / "figures"
 REPORTS_DIR = ROOT / "reports"
 SITE_DATA_PATH = ROOT / "site" / "data" / "results.json"
+SOCIAL_CARD_PATH = ROOT / "site" / "og-image.png"
 
 # Horizons before close at which a market's price is observed. The price at close
 # is useless for calibration: by then the outcome is usually known.

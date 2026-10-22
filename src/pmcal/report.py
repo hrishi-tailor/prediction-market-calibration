@@ -134,6 +134,11 @@ def run() -> dict[str, Any]:
     plots.platform_comparison(
         {p: reliability[(p, HEADLINE_HORIZON)] for p in platforms}, HEADLINE_HORIZON
     )
+    plots.social_card(
+        {p: reliability[(p, HEADLINE_HORIZON)] for p in platforms},
+        {"markets": int(df["market_id"].nunique())},
+        config.SOCIAL_CARD_PATH,
+    )
     k_head = k[k["horizon"] == HEADLINE_HORIZON]
     returns = models.returns_by_bucket(k_head)
     plots.returns_plot(returns, "Kalshi", HEADLINE_HORIZON)

@@ -270,3 +270,64 @@ def slope_forest(rows: pd.DataFrame) -> Path:
     )
     fig.tight_layout()
     return _save(fig, "slopes_by_group.png")
+
+
+def social_card(reliability: dict[str, pd.DataFrame], totals: dict[str, int], path: Path) -> Path:
+    """The 1200x630 link-preview image for the project website."""
+    fig = plt.figure(figsize=(12, 6.3), dpi=100)
+    fig.patch.set_facecolor(SURFACE)
+    fig.text(0.05, 0.83, "Are prediction markets", fontsize=30, fontweight="bold", color=INK)
+    fig.text(0.05, 0.75, "calibrated?", fontsize=30, fontweight="bold", color=INK)
+    fig.text(
+        0.05,
+        0.66,
+        f"{totals['markets']:,} resolved Kalshi and\n"
+        "Polymarket markets, priced 30 days\nto 1 hour before close.",
+        fontsize=17,
+        color=INK_2,
+        linespacing=1.5,
+        va="top",
+    )
+    fig.text(
+        0.05,
+        0.38,
+        "Calibrated to 1–2 points on average.\nKalshi longshots overpriced; Polymarket not.",
+        fontsize=15,
+        color=INK,
+        linespacing=1.5,
+        va="top",
+    )
+    fig.text(0.05, 0.07, "Hrishi Tailor", fontsize=14, fontweight="bold", color=INK_2)
+
+    ax = fig.add_axes([0.62, 0.14, 0.34, 0.72])
+    ax.plot([0, 1], [0, 1], color=MUTED, lw=1.2, ls="--", zorder=1)
+    for platform, table in reliability.items():
+        color = PLATFORM_COLORS[platform]
+        ax.errorbar(
+            table["mean_price"],
+            table["freq"],
+            yerr=[table["freq"] - table["ci_low"], table["ci_high"] - table["freq"]],
+            fmt="o",
+            ms=7,
+            lw=2,
+            color=color,
+            mec=SURFACE,
+            mew=1.2,
+            label=platform,
+            zorder=3,
+        )
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect("equal")
+    _cents(ax, "x")
+    _cents(ax, "y")
+    ax.tick_params(labelsize=12)
+    ax.set_xlabel("Market price, 1 day before close", fontsize=12)
+    ax.set_ylabel("Resolved Yes", fontsize=12)
+    ax.legend(loc="upper left", fontsize=12)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Social cards need an exact 1200x630 canvas, so skip the global tight cropping.
+    with plt.rc_context({"savefig.bbox": "standard"}):
+        fig.savefig(path, dpi=100, facecolor=SURFACE)
+    plt.close(fig)
+    return path
