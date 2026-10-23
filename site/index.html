@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Are Prediction Markets Calibrated? | Hrishi Tailor</title>
-  <meta name="description" content="A study of 46,168 resolved Kalshi and Polymarket markets: how close prices come to real probabilities, where the favourite–longshot bias lives, and whether it survives trading costs.">
+  <meta name="description" content="When a prediction market says 70%, does it happen 70% of the time? An interactive look at 46,168 resolved Kalshi and Polymarket markets.">
   <meta name="author" content="Hrishi Tailor">
-  <meta name="theme-color" content="#181915">
+  <meta name="theme-color" content="#f6f0e6">
   <link rel="canonical" href="https://hrishitailor.com/prediction-markets/">
 
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Are prediction markets calibrated?">
-  <meta property="og:description" content="46,168 resolved Kalshi and Polymarket markets. Prices land within 1–2 points of reality, Kalshi overprices longshots, and none of it survives trading costs.">
+  <meta property="og:title" content="When a market says 70%, does it happen 70% of the time?">
+  <meta property="og:description" content="An interactive look at 46,168 resolved Kalshi and Polymarket markets: how close the odds come to reality, where they go wrong, and whether you could profit.">
   <meta property="og:url" content="https://hrishitailor.com/prediction-markets/">
   <meta property="og:image" content="https://hrishitailor.com/prediction-markets/og-image.png">
   <meta property="og:image:width" content="1200">
@@ -21,11 +21,13 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
+  <script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
   <a class="skip-link" href="#main">skip to content</a>
+  <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
 
   <header class="site-header">
     <div class="wrap wrap--wide site-header__inner">
@@ -43,232 +45,299 @@
   </header>
 
   <main id="main">
-    <article>
-      <header class="story-head wrap">
-        <p class="kicker"><a href="https://hrishitailor.com/projects/">projects</a> / research · <span data-field="generated-month">october 2026</span></p>
-        <h1>Are prediction markets calibrated?</h1>
-        <p class="dek">When Kalshi or Polymarket prices an outcome at 70¢, does it happen 70% of the time?
-          I priced <span class="num" data-field="total-markets">46,168</span> resolved markets at four moments before
-          they closed, and checked what actually happened.</p>
-        <p class="byline">
-          <span>by hrishi tailor</span>
-          <a href="https://github.com/hrishi-tailor/prediction-market-calibration">code</a>
-          <a href="https://github.com/hrishi-tailor/prediction-market-calibration/blob/main/docs/methodology.md">methodology</a>
-          <a href="https://github.com/hrishi-tailor/prediction-market-calibration/releases/latest">dataset</a>
-        </p>
-      </header>
+    <!-- Hero -->
+    <section class="hero wrap wrap--wide">
+      <div class="hero__text">
+        <p class="kicker">a data story · <span data-field="generated-month">october 2026</span></p>
+        <h1>When a market says <span class="hl">70%</span>, does it happen 70% of the time?</h1>
+        <p class="dek">Prediction markets let people bet on real-world events, and their prices are read as odds. I
+          checked <strong class="count" data-count="total-markets">46,168</strong> of them against what actually
+          happened.</p>
+        <a class="cta" href="#game">test your intuition first <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="hero__art" aria-hidden="true">
+        <svg id="hero-art" viewBox="0 0 400 400"></svg>
+      </div>
+    </section>
 
-      <section class="wrap answer" aria-labelledby="answer-title">
-        <h2 class="label" id="answer-title">the short answer</h2>
-        <ol class="findings">
-          <li>
-            <span class="findings__n">01</span>
-            <p><strong>Mostly, yes.</strong> Across every price, outcomes land within one to two points of what the
-              market implied, on both platforms.</p>
-          </li>
-          <li>
-            <span class="findings__n">02</span>
-            <p><strong>But Kalshi overprices longshots.</strong> The bias grows as a market nears its close and lives
-              in thinly traded markets. Polymarket shows none.</p>
-          </li>
-          <li>
-            <span class="findings__n">03</span>
-            <p><strong>And you can't profit from it.</strong> Buying Kalshi contracts priced
-              <span data-field="longshot-bucket">under 2¢</span> returned
-              <span class="num" data-field="longshot-return">−89%</span> on average after fees.</p>
-          </li>
-        </ol>
-      </section>
+    <section class="stats wrap wrap--wide reveal" aria-label="The study in numbers">
+      <div class="stat"><span class="stat__n count" data-count="total-markets">46,168</span><span class="stat__l">resolved markets</span></div>
+      <div class="stat"><span class="stat__n count" data-count="total-observations">118,093</span><span class="stat__l">prices checked</span></div>
+      <div class="stat"><span class="stat__n">2</span><span class="stat__l">platforms: <span class="term" tabindex="0" data-term="kalshi">Kalshi</span> &amp; <span class="term" tabindex="0" data-term="polymarket">Polymarket</span></span></div>
+      <div class="stat"><span class="stat__n" data-field="year-span">5</span><span class="stat__l">years of markets</span></div>
+    </section>
 
-      <figure class="figure figure--hero wrap wrap--wide" aria-labelledby="fig1-title">
-        <figcaption class="figure__head">
-          <span class="label">fig. 1</span>
-          <span class="figure__title" id="fig1-title">Price against outcome, for every price bucket</span>
-        </figcaption>
-        <div class="hero-grid">
-          <div class="hero-chart">
-            <div class="chart" id="hero-chart" role="img" aria-label="Calibration chart: share of markets that resolved Yes against their price, for Kalshi and Polymarket"></div>
+    <!-- Game -->
+    <section class="game wrap wrap--mid reveal" id="game" aria-labelledby="game-title">
+      <p class="eyebrow">before we start</p>
+      <h2 id="game-title">Can you beat the market?</h2>
+      <p class="lead">Here are three real groups of Kalshi markets, priced a day before they closed. The price is the
+        market's guess at the odds. Drag the slider to <em>your</em> guess at how often they actually happened.</p>
+
+      <div class="game__card" id="game-card" aria-live="polite">
+        <div class="game__top">
+          <span class="game__round" id="game-round">round 1 of 3</span>
+          <span class="game__score" id="game-score"></span>
+        </div>
+        <p class="game__q" id="game-question">The market priced these at <b>25¢</b>, a 25% chance.</p>
+        <p class="game__sub" id="game-sub">How often did they actually happen?</p>
+        <div class="game__track">
+          <div class="game__scale" id="game-scale" aria-hidden="true"></div>
+          <input type="range" id="game-guess" min="0" max="100" step="1" value="50" aria-label="Your guess, in percent">
+        </div>
+        <div class="game__controls">
+          <span class="game__guess">your guess: <b id="game-guess-value">50%</b></span>
+          <button type="button" class="btn btn--primary" id="game-submit">lock it in</button>
+        </div>
+        <div class="game__result" id="game-result" hidden></div>
+      </div>
+    </section>
+
+    <!-- 1: what is a prediction market -->
+    <section class="chapter wrap reveal" aria-labelledby="c1">
+      <p class="chapter__n">chapter 1</p>
+      <h2 id="c1">A price is a probability</h2>
+      <p>On a prediction market, you buy a <span class="term" tabindex="0" data-term="contract">contract</span> that
+        pays <strong>$1</strong> if something happens and nothing if it doesn't. So the price tells you how likely
+        traders think it is: a contract trading at 30¢ means roughly a 30% chance.</p>
+    </section>
+
+    <div class="wrap wrap--mid reveal">
+      <div class="contract" id="contract">
+        <p class="contract__label">example contract</p>
+        <p class="contract__q">Will it rain in Toronto tomorrow?</p>
+        <div class="contract__sides" role="group" aria-label="Choose a side">
+          <button type="button" class="side side--yes" data-side="yes" aria-pressed="false"><span>yes</span><b>30¢</b></button>
+          <button type="button" class="side side--no" data-side="no" aria-pressed="false"><span>no</span><b>70¢</b></button>
+        </div>
+        <p class="contract__explain" id="contract-explain">Tap a side to see what you'd be betting.</p>
+      </div>
+    </div>
+
+    <section class="chapter wrap reveal" aria-labelledby="c1b">
+      <p>If those prices are honest, then across every 30¢ contract, about 30% should pay out. A market where that holds
+        at every price is called <span class="term" tabindex="0" data-term="calibrated">calibrated</span>. That's
+        what I tested, using each market's price <strong>30 days, 7 days, 1 day and 1 hour</strong> before it closed.
+        (The final price is useless: by then everyone knows the answer.)</p>
+    </section>
+
+    <!-- 2: main chart -->
+    <section class="chapter wrap reveal" aria-labelledby="c2">
+      <p class="chapter__n">chapter 2</p>
+      <h2 id="c2">Mostly, the odds hold up</h2>
+      <p>Each dot below is a group of markets with similar prices. Left to right is what the market said; bottom to top
+        is how often it actually happened. If the odds are honest, the dots sit on the dashed line. Press play to watch
+        markets get sharper as their close approaches.</p>
+    </section>
+
+    <figure class="figure wrap wrap--wide reveal" aria-labelledby="fig1-title">
+      <figcaption class="figure__head">
+        <span class="figure__title" id="fig1-title">What the market said vs. what happened</span>
+      </figcaption>
+      <div class="hero-grid">
+        <div class="hero-chart">
+          <div class="chart" id="hero-chart" role="img" aria-label="Calibration chart: share of markets that resolved Yes against their price, for Kalshi and Polymarket"></div>
+        </div>
+        <div class="hero-side">
+          <div class="scrubber" role="group" aria-label="Time before close">
+            <div class="scrubber__head">
+              <span class="mono-label">time before close</span>
+              <button class="play" type="button" aria-label="Play through every horizon">▶ play</button>
+            </div>
+            <div class="scrubber__value" id="hero-horizon" aria-live="polite">1 day</div>
+            <input class="scrubber__range" id="horizon-range" type="range" min="0" max="3" step="1" value="2" aria-label="Time before close">
+            <div class="scrubber__ticks" aria-hidden="true"><span>30 days</span><span>7 days</span><span>1 day</span><span>1 hour</span></div>
           </div>
-          <div class="hero-side">
-            <div class="scrubber" role="group" aria-label="Time before close">
-              <div class="scrubber__head">
-                <span class="label">time before close</span>
-                <button class="play" type="button" aria-label="Play through every horizon">play ▸</button>
-              </div>
-              <div class="scrubber__value" id="hero-horizon" aria-live="polite">1 day</div>
-              <input class="scrubber__range" id="horizon-range" type="range" min="0" max="3" step="1" value="2" aria-label="Time before close">
-              <div class="scrubber__ticks" aria-hidden="true">
-                <span>30 days</span><span>7 days</span><span>1 day</span><span>1 hour</span>
-              </div>
-            </div>
-            <div class="toggle" role="group" aria-label="View">
-              <button type="button" data-view="curve" aria-pressed="true">calibration</button>
-              <button type="button" data-view="gap" aria-pressed="false">gap from perfect</button>
-            </div>
-            <dl class="readout" id="hero-readout"></dl>
+          <dl class="readout" id="hero-readout"></dl>
+          <div class="toggle" role="group" aria-label="View">
+            <button type="button" data-view="curve" aria-pressed="true">full picture</button>
+            <button type="button" data-view="gap" aria-pressed="false">zoom in on errors</button>
           </div>
         </div>
-        <p class="figure__note" id="hero-note">Each dot groups markets by price. On a perfectly calibrated market every dot
-          sits on the dashed line. Whiskers are 95% confidence intervals, clustered by event because markets in the same
-          event resolve together. Hover a dot for its numbers.</p>
-        <details class="data-table">
-          <summary>show the numbers</summary>
-          <div id="hero-table"></div>
-        </details>
-      </figure>
+      </div>
+      <p class="figure__note" id="hero-note">Vertical lines show the range the true value plausibly falls in (a 95%
+        <span class="term" tabindex="0" data-term="ci">confidence interval</span>). Hover or tap a dot for its numbers.</p>
+      <details class="data-table"><summary>show the numbers</summary><div id="hero-table"></div></details>
+    </section>
 
-      <section class="wrap prose" aria-labelledby="s1">
-        <h2 id="s1"><span class="section-n">1</span>What "calibrated" means</h2>
-        <p>A price is a forecast. If you bought every contract priced at 70¢, a calibrated market would pay out on 70%
-          of them, no more and no less. Calibration says nothing about whether a market is <em>smart</em>, only whether
-          its numbers can be read as probabilities.</p>
-        <p>Final prices can't test this: by the time a market closes, the outcome is usually known and the price has
-          already moved to 0¢ or 100¢. So I priced each market 30 days, 7 days, 1 day and 1 hour before it closed,
-          using only data from before that moment.</p>
-        <p class="pull" id="example-line">On Kalshi a day before close, contracts priced at <span class="num">0.7¢</span>
-          paid out <span class="num">0.2%</span> of the time.</p>
-      </section>
+    <section class="chapter wrap reveal">
+      <p class="pull" id="example-line">On Kalshi, contracts priced at 99.2¢ a day before close paid out 99.8% of the time.</p>
+      <p>On average, the dots land within one to two percentage points of the line on both platforms. That's
+        impressively close for odds set by strangers betting money. But "on average" hides a pattern.</p>
+    </section>
 
-      <section class="wrap prose" aria-labelledby="s2">
-        <h2 id="s2"><span class="section-n">2</span>The longshot bias</h2>
-        <p>One number summarises calibration: the slope <i>b</i> of a logistic regression of outcomes on prices. A slope
-          of 1 is perfect. Above 1, cheap contracts are overpriced and expensive ones underpriced, the
-          <em>favourite–longshot bias</em> long documented in horse-race betting. Below 1, prices are overconfident.</p>
-        <p>On Kalshi the slope climbs steadily as markets approach their close. Polymarket stays close to 1
-          throughout, dipping slightly below it in the final day.</p>
-      </section>
+    <!-- 3: longshot bias -->
+    <section class="chapter wrap reveal" aria-labelledby="c3">
+      <p class="chapter__n">chapter 3</p>
+      <h2 id="c3">Long shots are overpriced</h2>
+      <p>Horse-racing gamblers have known this for decades: people overpay for
+        <span class="term" tabindex="0" data-term="longshot">long shots</span> and underpay for
+        <span class="term" tabindex="0" data-term="favourite">favourites</span>. One popular explanation: the thrill
+        of a big payout makes cheap tickets more popular than they deserve. It's called the
+        <em>favourite–longshot bias</em>.</p>
+      <p>On Kalshi it's there, and it grows as a market nears its close. Polymarket doesn't show it.</p>
+    </section>
 
-      <figure class="figure wrap wrap--mid" aria-labelledby="fig2-title">
-        <figcaption class="figure__head">
-          <span class="label">fig. 2</span>
-          <span class="figure__title" id="fig2-title">Calibration slope as close approaches</span>
-        </figcaption>
-        <div class="chart" id="slope-chart" role="img" aria-label="Calibration slope with 95% confidence intervals at each horizon, for Kalshi and Polymarket"></div>
-        <p class="figure__note">Solid dots use every price; hollow dots refit on prices between 5¢ and 95¢ only. Kalshi
-          quotes in whole cents, so it can't price a near-certain outcome above about 98.5¢, and that floor alone mimics
-          the bias. Kalshi's bias survives without the tails.</p>
-        <details class="data-table">
-          <summary>show the numbers</summary>
-          <div id="slope-table"></div>
-        </details>
-      </figure>
+    <figure class="figure wrap wrap--mid reveal" aria-labelledby="fig2-title">
+      <figcaption class="figure__head">
+        <span class="figure__title" id="fig2-title">How lopsided the odds are, as close approaches</span>
+      </figcaption>
+      <div class="chart" id="slope-chart" role="img" aria-label="Calibration slope with 95% confidence intervals at each horizon, for Kalshi and Polymarket"></div>
+      <p class="figure__note">Each dot is a <span class="term" tabindex="0" data-term="slope">calibration slope</span>:
+        1 means perfectly honest odds, above 1 means long shots are overpriced. Hollow dots repeat the test without the
+        most extreme prices, to rule out a quirk of Kalshi's 1¢ price steps.</p>
+      <details class="data-table"><summary>show the numbers</summary><div id="slope-table"></div></details>
+    </figure>
 
-      <section class="wrap prose" aria-labelledby="s3">
-        <h2 id="s3"><span class="section-n">3</span>Where the bias lives</h2>
-        <p>Split by volume, the picture sharpens. On Kalshi the least-traded third of markets carries the bias and the
-          most-traded third is calibrated. Polymarket's busiest markets lean the other way, toward overconfidence, with
-          weather markets the most overconfident of all.</p>
-      </section>
+    <!-- 4: simulator -->
+    <section class="chapter wrap reveal" aria-labelledby="c4">
+      <p class="chapter__n">chapter 4</p>
+      <h2 id="c4">So, can you get rich betting against it?</h2>
+      <p>If long shots are overpriced, maybe you could profit by avoiding them, or by betting against them. Try it with
+        real Kalshi prices from a day before close, including the fee you'd actually pay.</p>
+    </section>
 
-      <figure class="figure wrap wrap--wide" aria-labelledby="fig3-title">
-        <figcaption class="figure__head">
-          <span class="label">fig. 3</span>
-          <span class="figure__title" id="fig3-title">Calibration slope by volume and category, one day before close</span>
-        </figcaption>
-        <div class="forest-grid">
-          <div><h3 class="panel-title panel-title--kalshi">Kalshi</h3><div class="chart" id="forest-kalshi" role="img" aria-label="Kalshi calibration slope by volume and category"></div></div>
-          <div><h3 class="panel-title panel-title--poly">Polymarket</h3><div class="chart" id="forest-poly" role="img" aria-label="Polymarket calibration slope by volume and category"></div></div>
-        </div>
-        <p class="figure__note">Filled dots and bright labels mark groups whose 95% interval excludes 1; hollow dots are
-          consistent with perfect calibration. Volume terciles use each market's lifetime volume. Categories are each
-          platform's own labels and don't map one-to-one across platforms.</p>
-        <details class="data-table">
-          <summary>show the numbers</summary>
-          <div id="forest-table"></div>
-        </details>
-      </figure>
-
-      <section class="wrap prose" aria-labelledby="s4">
-        <h2 id="s4"><span class="section-n">4</span>Can you make money from it?</h2>
-        <p>No. Trading at the quoted price on Kalshi a day before close, buying Yes at the ask or No at one minus the
-          bid and paying the taker fee, cheap contracts lose heavily whichever side they're on. Favourites lose only the
-          spread and fee. No price bucket earns a significantly positive return.</p>
-      </section>
-
-      <figure class="figure wrap wrap--wide" aria-labelledby="fig4-title">
-        <figcaption class="figure__head">
-          <span class="label">fig. 4</span>
-          <span class="figure__title" id="fig4-title">Kalshi: average return per $1 after fees, one day before close</span>
-        </figcaption>
-        <div class="returns-grid">
-          <div><h3 class="panel-title">Buying Yes</h3><div class="chart" id="returns-yes" role="img" aria-label="Average return from buying Yes in each price bucket"></div></div>
-          <div><h3 class="panel-title">Buying No</h3><div class="chart" id="returns-no" role="img" aria-label="Average return from buying No in each price bucket"></div></div>
-        </div>
-        <p class="figure__note">Bars are coloured where the 95% interval sits entirely below zero, and grey where it
-          includes zero. Polymarket's history has no bid or ask, so its returns can't be computed honestly and aren't
-          shown.</p>
-        <details class="data-table">
-          <summary>show the numbers</summary>
-          <div id="returns-table"></div>
-        </details>
-      </figure>
-
-      <section class="wrap prose" aria-labelledby="s5">
-        <h2 id="s5"><span class="section-n">5</span>Three ways this could have been wrong</h2>
-        <p>Each of these can fake a favourite–longshot bias or a calibration error, so each was checked explicitly.</p>
-        <div class="checks">
-          <div class="check">
-            <div class="check__figure num" data-field="kalshi-mid">1.08</div>
-            <div>
-              <h3>Tick size</h3>
-              <p>Whole-cent quotes compress extreme prices toward 50¢. Refitting on 5–95¢ prices only, Kalshi's
-                one-day slope is still <span data-field="kalshi-mid">1.08</span>
-                <span class="faint" data-field="kalshi-mid-ci">(95% CI 1.02–1.14)</span>.</p>
+    <div class="wrap wrap--mid reveal">
+      <div class="sim" id="sim">
+        <div class="sim__controls">
+          <div>
+            <p class="mono-label">bet $100 on</p>
+            <div class="toggle toggle--sim" role="group" aria-label="Side">
+              <button type="button" data-sim-side="yes" aria-pressed="true">yes, it happens</button>
+              <button type="button" data-sim-side="no" aria-pressed="false">no, it doesn't</button>
             </div>
           </div>
-          <div class="check">
-            <div class="check__figure num" data-field="early-share">10%</div>
-            <div>
-              <h3>Stopping time</h3>
-              <p>"Will X happen by D?" markets close when X happens, so their close time depends on the outcome. That
-                share of Polymarket markets closed early; without them its one-day slope is
-                <span data-field="ontime-slope">0.93</span>, so the conclusion holds.</p>
-            </div>
-          </div>
-          <div class="check">
-            <div class="check__figure num" data-field="carry-30">0.21¢</div>
-            <div>
-              <h3>Cost of capital</h3>
-              <p>Money locked in a contract also pulls prices toward 50¢, but at 5% a year by at most that much over
-                30 days, far too little to explain the bias.</p>
-            </div>
+          <div class="sim__price">
+            <p class="mono-label">when the yes price is <b id="sim-bucket">0–2¢</b></p>
+            <input type="range" id="sim-range" min="0" max="13" step="1" value="0" aria-label="Yes price range">
+            <div class="sim__ticks" aria-hidden="true"><span>long shot</span><span>coin flip</span><span>sure thing</span></div>
           </div>
         </div>
-      </section>
+        <div class="sim__out" aria-live="polite">
+          <p class="sim__back">on average you'd get back</p>
+          <p class="sim__money" id="sim-money">$11</p>
+          <div class="sim__bar" aria-hidden="true">
+            <span class="sim__fill" id="sim-fill"></span>
+            <span class="sim__range-band" id="sim-band"></span>
+            <span class="sim__stake"><i>$100 in</i></span>
+          </div>
+          <p class="sim__verdict" id="sim-verdict"></p>
+        </div>
+      </div>
+    </div>
 
-      <section class="wrap prose" aria-labelledby="s6">
-        <h2 id="s6"><span class="section-n">6</span>How it was built</h2>
+    <section class="chapter wrap reveal">
+      <p>No price range makes reliable money. Cheap contracts lose heavily on <em>either</em> side, and everything else
+        loses roughly the fee. The bias is real, but it isn't big enough to beat the costs of trading.</p>
+    </section>
+
+    <figure class="figure wrap wrap--wide reveal" aria-labelledby="fig4-title">
+      <figcaption class="figure__head">
+        <span class="figure__title" id="fig4-title">Average return per $1 after fees, every price range at once</span>
+      </figcaption>
+      <div class="returns-grid">
+        <div><h3 class="panel-title">betting yes</h3><div class="chart" id="returns-yes" role="img" aria-label="Average return from buying Yes in each price bucket"></div></div>
+        <div><h3 class="panel-title">betting no</h3><div class="chart" id="returns-no" role="img" aria-label="Average return from buying No in each price bucket"></div></div>
+      </div>
+      <p class="figure__note">Bars are coloured where the loss is statistically clear, grey where it's within the margin
+        of error. Kalshi only: Polymarket's history has no buy and sell quotes, so its returns can't be computed honestly.</p>
+      <details class="data-table"><summary>show the numbers</summary><div id="returns-table"></div></details>
+    </figure>
+
+    <!-- 5: where -->
+    <section class="chapter wrap reveal" aria-labelledby="c5">
+      <p class="chapter__n">chapter 5</p>
+      <h2 id="c5">Where the odds go wrong</h2>
+      <p>The bias isn't spread evenly. On Kalshi it lives in quiet markets with little trading, and in politics. The
+        busiest markets are almost perfectly honest. Polymarket errs the other way: its busiest markets, and its weather
+        markets most of all, sound a little too sure of themselves.</p>
+    </section>
+
+    <figure class="figure wrap wrap--wide reveal" aria-labelledby="fig3-title">
+      <figcaption class="figure__head">
+        <span class="figure__title" id="fig3-title">Calibration slope by trading volume and topic, a day before close</span>
+      </figcaption>
+      <div class="forest-grid">
+        <div><h3 class="panel-title panel-title--kalshi">kalshi</h3><div class="chart" id="forest-kalshi" role="img" aria-label="Kalshi calibration slope by volume and category"></div></div>
+        <div><h3 class="panel-title panel-title--poly">polymarket</h3><div class="chart" id="forest-poly" role="img" aria-label="Polymarket calibration slope by volume and category"></div></div>
+      </div>
+      <p class="figure__note">Filled dots are clear findings; hollow dots are consistent with honest odds. Right of the
+        dashed line, long shots are overpriced; left of it, prices are overconfident.</p>
+      <details class="data-table"><summary>show the numbers</summary><div id="forest-table"></div></details>
+    </figure>
+
+    <!-- 6: checks -->
+    <section class="chapter wrap reveal" aria-labelledby="c6">
+      <p class="chapter__n">chapter 6</p>
+      <h2 id="c6">How I know it's real</h2>
+      <p>Three things could have faked these results. Each was checked.</p>
+      <div class="checks">
+        <div class="check">
+          <div class="check__figure" data-field="kalshi-mid">1.08</div>
+          <div>
+            <h3>Price steps</h3>
+            <p>Kalshi prices move in 1¢ steps, so nothing can trade above about 99¢, which squeezes extreme prices toward
+              the middle. Ignoring the extremes, Kalshi's bias is still there: slope
+              <span data-field="kalshi-mid">1.08</span> <span class="faint" data-field="kalshi-mid-ci"></span>.</p>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check__figure" data-field="early-share">10%</div>
+          <div>
+            <h3>Markets that end early</h3>
+            <p>"Will X happen by Friday?" closes the moment X happens, so <em>when</em> it closes depends on the answer,
+              which can skew a "day before close" price. That share of Polymarket markets closed early; without them the
+              conclusion holds (slope <span data-field="ontime-slope">0.93</span>).</p>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check__figure" data-field="carry-30">0.21¢</div>
+          <div>
+            <h3>The cost of waiting</h3>
+            <p>Money tied up in a bet could have earned interest elsewhere, which also nudges prices. Over 30 days, by at
+              most that much, far too little to matter.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7: under the hood -->
+    <section class="chapter wrap reveal" aria-labelledby="c7">
+      <p class="chapter__n">under the hood</p>
+      <h2 id="c7">How it was built</h2>
+      <p>For the technically curious. Everything is open: the code, the methodology and the dataset.</p>
+      <details class="hood">
+        <summary>data, sampling and statistics</summary>
         <ul class="method">
           <li><strong>Data.</strong> Public Kalshi and Polymarket APIs, fetched through a rate-limited, resumable Python
             pipeline. Kalshi prices are bid/ask midpoints from hourly candles, with spreads over 10¢ dropped; Polymarket
             prices are hourly for the two weeks before close.</li>
           <li><strong>Sampling.</strong> At most 10 markets per series or event, so a few hourly weather and index series
             can't drown out everything else. All sampling is seeded.</li>
-          <li><strong>Uncertainty.</strong> Markets in one event resolve together, so every interval treats the event,
-            not the market, as the unit: a cluster bootstrap for the buckets, cluster-robust standard errors for the
-            regressions.</li>
+          <li><strong>Statistics.</strong> Logistic calibration regression, <code>P(yes) = sigmoid(a + b·logit(price))</code>.
+            Markets in one event resolve together, so intervals use a cluster bootstrap and cluster-robust standard errors.</li>
           <li><strong>Engineering.</strong> A tested Python package with CI, and a released dataset that reproduces every
             figure here in under a minute.</li>
         </ul>
         <div class="table-wrap" id="data-table"></div>
-        <p class="links">
-          <a class="btn btn--primary" href="https://github.com/hrishi-tailor/prediction-market-calibration">read the code</a>
-          <a class="btn" href="https://github.com/hrishi-tailor/prediction-market-calibration/blob/main/docs/methodology.md">full methodology</a>
-          <a class="btn" href="https://github.com/hrishi-tailor/prediction-market-calibration/blob/main/reports/results.md">every result</a>
-        </p>
-      </section>
-
-      <section class="wrap prose prose--small" aria-labelledby="s7">
-        <h2 id="s7" class="label">limitations</h2>
-        <ul class="method">
-          <li>Lifetime volume is measured after the fact, so "high volume" means markets that <em>ended up</em> liquid,
-            not liquidity at the moment of the price.</li>
-          <li>Kalshi doesn't expose a scheduled close separate from the actual one, so the stopping-time check covers
+        <ul class="method method--small">
+          <li>Lifetime volume is measured after the fact, so "high volume" means markets that <em>ended up</em> liquid.</li>
+          <li>Kalshi doesn't expose a scheduled close separate from the actual one, so the early-close check covers
             Polymarket only.</li>
-          <li>The two platforms list very different markets, so their overall accuracy isn't directly comparable.</li>
+          <li>The platforms list very different markets, so their overall accuracy isn't directly comparable.</li>
         </ul>
-      </section>
-    </article>
+      </details>
+      <p class="links">
+        <a class="btn btn--primary" href="https://github.com/hrishi-tailor/prediction-market-calibration">read the code</a>
+        <a class="btn" href="https://github.com/hrishi-tailor/prediction-market-calibration/blob/main/docs/methodology.md">full methodology</a>
+        <a class="btn" href="https://github.com/hrishi-tailor/prediction-market-calibration/releases/latest">download the data</a>
+      </p>
+    </section>
+
+    <section class="outro wrap reveal">
+      <p class="outro__q">So, when a market says 70%?</p>
+      <p class="outro__a">It means about 70%. Just be wary of the long shots.</p>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -284,7 +353,7 @@
   </footer>
 
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
-  <noscript><p class="wrap">The interactive charts need JavaScript. The same results are in the
+  <noscript><p class="wrap">The interactive parts need JavaScript. The same results are in the
     <a href="https://github.com/hrishi-tailor/prediction-market-calibration#findings">README</a>.</p></noscript>
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>

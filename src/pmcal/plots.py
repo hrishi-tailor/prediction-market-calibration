@@ -272,17 +272,17 @@ def slope_forest(rows: pd.DataFrame) -> Path:
     return _save(fig, "slopes_by_group.png")
 
 
-# The website's warm-dark palette, so link previews match the page they open.
+# The website's paper palette, so link previews match the page they open.
 CARD = {
-    "bg": "#181915",
-    "heading": "#f5f3ef",
-    "text": "#edebe7",
-    "muted": "#a09e9b",
-    "faint": "#888683",
-    "grid": "#2b2925",
-    "gold": "#eeb97b",
-    "Kalshi": "#c18434",
-    "Polymarket": "#4493d0",
+    "bg": "#f6f0e6",
+    "heading": "#1c1915",
+    "text": "#1c1915",
+    "muted": "#4b453d",
+    "faint": "#776f64",
+    "grid": "#e2d8c7",
+    "gold": "#8f5410",
+    "Kalshi": "#b8701c",
+    "Polymarket": "#2a6db8",
 }
 
 
@@ -293,13 +293,14 @@ def social_card(reliability: dict[str, pd.DataFrame], totals: dict[str, int], pa
     fig = plt.figure(figsize=(12, 6.3), dpi=100)
     fig.patch.set_facecolor(CARD["bg"])
     fig.text(
-        0.06, 0.86, "hrishi tailor  /  research", fontsize=13, color=CARD["faint"], family=mono
+        0.06, 0.86, "hrishi tailor  /  a data story", fontsize=13, color=CARD["faint"], family=mono
     )
-    fig.text(0.06, 0.72, "Are prediction markets", fontsize=36, color=CARD["heading"], family=serif)
-    fig.text(0.06, 0.62, "calibrated?", fontsize=36, color=CARD["heading"], family=serif)
+    title = ["When a market says 70%,", "does it happen 70%", "of the time?"]
+    for i, line in enumerate(title):
+        fig.text(0.06, 0.73 - i * 0.095, line, fontsize=32, color=CARD["heading"], family=serif)
     fig.text(
         0.06,
-        0.50,
+        0.44,
         f"{totals['markets']:,} resolved Kalshi and Polymarket\n"
         "markets, priced 30 days to 1 hour before close.",
         fontsize=16,
@@ -314,7 +315,7 @@ def social_card(reliability: dict[str, pd.DataFrame], totals: dict[str, int], pa
         ("03", "Neither is profitable after fees."),
     ]
     for i, (n, text) in enumerate(findings):
-        y = 0.30 - i * 0.075
+        y = 0.25 - i * 0.07
         fig.text(0.06, y, n, fontsize=12, color=CARD["gold"], family=mono)
         fig.text(0.1, y, text, fontsize=14, color=CARD["text"], family=serif)
 
