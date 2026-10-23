@@ -45,7 +45,9 @@ def build(
     carry: dict[int, float],
     on_time_summary: pd.DataFrame,
     headline_horizon: str,
+    extras: dict[str, pd.DataFrame] | None = None,
 ) -> dict[str, Any]:
+    extras = extras or {}
     platforms = (
         df.groupby("platform")
         .agg(
@@ -147,6 +149,46 @@ def build(
             on_time_summary, ["horizon", "n", "yes_rate", "mean_price", "b", "b_low", "b_high"]
         )
         if len(on_time_summary)
+        else [],
+        "by_period": _records(
+            extras["by_period"],
+            [
+                "platform",
+                "period",
+                "n",
+                "events",
+                "b",
+                "b_low",
+                "b_high",
+                "median_volume",
+                "weather_share",
+            ],
+        )
+        if "by_period" in extras
+        else [],
+        "composition": _records(
+            extras["composition"], ["sample", "period", "n", "events", "b", "b_low", "b_high"]
+        )
+        if "composition" in extras and len(extras["composition"])
+        else [],
+        "forecast": _records(
+            extras["forecast"],
+            [
+                "platform",
+                "horizon",
+                "split",
+                "train_n",
+                "test_n",
+                "test_events",
+                "b",
+                "brier_raw",
+                "brier_recal",
+                "improvement",
+                "improvement_low",
+                "improvement_high",
+            ],
+        )
+        if "forecast" in extras
         else [],
         "early_close_share": _clean(early_share),
         "carry_distortion": {str(k): _clean(v) for k, v in carry.items()},

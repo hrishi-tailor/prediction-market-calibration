@@ -1828,6 +1828,39 @@
   },
   {
    "platform": "Kalshi",
+   "group": "Recent trading",
+   "level": "Heavy",
+   "n": 3805,
+   "events": 2549,
+   "b": 1.17219,
+   "b_low": 1.08461,
+   "b_high": 1.25977,
+   "p_b1": 0.00012
+  },
+  {
+   "platform": "Kalshi",
+   "group": "Recent trading",
+   "level": "Light",
+   "n": 5176,
+   "events": 3708,
+   "b": 1.09395,
+   "b_low": 1.03351,
+   "b_high": 1.1544,
+   "p_b1": 0.00232
+  },
+  {
+   "platform": "Kalshi",
+   "group": "Recent trading",
+   "level": "None",
+   "n": 4970,
+   "events": 3285,
+   "b": 1.09492,
+   "b_low": 1.0208,
+   "b_high": 1.16903,
+   "p_b1": 0.01207
+  },
+  {
+   "platform": "Kalshi",
    "group": "Category",
    "level": "Climate and Weather",
    "n": 422,
@@ -2138,6 +2171,214 @@
    "b": 0.97052,
    "b_low": 0.94329,
    "b_high": 0.99774
+  }
+ ],
+ "by_period": [
+  {
+   "platform": "Kalshi",
+   "period": "2021\u201324",
+   "n": 976,
+   "events": 611,
+   "b": 1.31359,
+   "b_low": 1.11704,
+   "b_high": 1.51015,
+   "median_volume": 8111.5,
+   "weather_share": 0.09631
+  },
+  {
+   "platform": "Kalshi",
+   "period": "2025 H1",
+   "n": 1618,
+   "events": 820,
+   "b": 1.03608,
+   "b_low": 0.92849,
+   "b_high": 1.14368,
+   "median_volume": 17155,
+   "weather_share": 0.01112
+  },
+  {
+   "platform": "Kalshi",
+   "period": "2025 H2",
+   "n": 2400,
+   "events": 1177,
+   "b": 1.11488,
+   "b_low": 1.01644,
+   "b_high": 1.21332,
+   "median_volume": 12174,
+   "weather_share": 0.015
+  },
+  {
+   "platform": "Kalshi",
+   "period": "2026 H1",
+   "n": 6158,
+   "events": 3307,
+   "b": 1.12609,
+   "b_low": 1.06344,
+   "b_high": 1.18875,
+   "median_volume": 10221.22,
+   "weather_share": 0.03004
+  },
+  {
+   "platform": "Kalshi",
+   "period": "2026 H2",
+   "n": 2799,
+   "events": 1758,
+   "b": 1.06813,
+   "b_low": 0.97308,
+   "b_high": 1.16317,
+   "median_volume": 7547.68,
+   "weather_share": 0.0318
+  },
+  {
+   "platform": "Polymarket",
+   "period": "2021\u201324",
+   "n": 1422,
+   "events": 1045,
+   "b": 1.02613,
+   "b_low": 0.91484,
+   "b_high": 1.13742,
+   "median_volume": 52743.56049,
+   "weather_share": 0
+  },
+  {
+   "platform": "Polymarket",
+   "period": "2025 H1",
+   "n": 1930,
+   "events": 1315,
+   "b": 1.01471,
+   "b_low": 0.90286,
+   "b_high": 1.12656,
+   "median_volume": 70386.77705,
+   "weather_share": 0.0886
+  },
+  {
+   "platform": "Polymarket",
+   "period": "2025 H2",
+   "n": 5656,
+   "events": 3701,
+   "b": 1.01385,
+   "b_low": 0.95055,
+   "b_high": 1.07715,
+   "median_volume": 41116.76346,
+   "weather_share": 0.05322
+  },
+  {
+   "platform": "Polymarket",
+   "period": "2026 H1",
+   "n": 11640,
+   "events": 7825,
+   "b": 0.94228,
+   "b_low": 0.90302,
+   "b_high": 0.98155,
+   "median_volume": 27881.28712,
+   "weather_share": 0.29837
+  },
+  {
+   "platform": "Polymarket",
+   "period": "2026 H2",
+   "n": 7444,
+   "events": 5666,
+   "b": 0.88873,
+   "b_low": 0.83635,
+   "b_high": 0.9411,
+   "median_volume": 21311.2005,
+   "weather_share": 0.28614
+  }
+ ],
+ "composition": [
+  {
+   "sample": "all markets",
+   "period": "before 2026",
+   "n": 9008,
+   "events": 6049,
+   "b": 1.01709,
+   "b_low": 0.96766,
+   "b_high": 1.06652
+  },
+  {
+   "sample": "all markets",
+   "period": "2026",
+   "n": 19084,
+   "events": 13477,
+   "b": 0.92382,
+   "b_low": 0.89251,
+   "b_high": 0.95513
+  },
+  {
+   "sample": "without weather",
+   "period": "before 2026",
+   "n": 8536,
+   "events": 5700,
+   "b": 1.01716,
+   "b_low": 0.9669,
+   "b_high": 1.06743
+  },
+  {
+   "sample": "without weather",
+   "period": "2026",
+   "n": 13481,
+   "events": 9587,
+   "b": 0.99107,
+   "b_low": 0.95221,
+   "b_high": 1.02993
+  }
+ ],
+ "forecast": [
+  {
+   "platform": "Kalshi",
+   "horizon": "1d",
+   "split": "2025-07-01",
+   "train_n": 2594,
+   "test_n": 11357,
+   "test_events": 6125,
+   "b": 1.12066,
+   "brier_raw": 0.0725,
+   "brier_recal": 0.07248,
+   "improvement": 0.00019,
+   "improvement_low": -0.00237,
+   "improvement_high": 0.00254
+  },
+  {
+   "platform": "Kalshi",
+   "horizon": "1h",
+   "split": "2025-07-01",
+   "train_n": 2751,
+   "test_n": 12337,
+   "test_events": 6928,
+   "b": 1.28816,
+   "brier_raw": 0.03832,
+   "brier_recal": 0.03848,
+   "improvement": -0.00419,
+   "improvement_low": -0.01128,
+   "improvement_high": 0.0031
+  },
+  {
+   "platform": "Polymarket",
+   "horizon": "1d",
+   "split": "2025-07-01",
+   "train_n": 3352,
+   "test_n": 24740,
+   "test_events": 17154,
+   "b": 1.02014,
+   "brier_raw": 0.12885,
+   "brier_recal": 0.12922,
+   "improvement": -0.0029,
+   "improvement_low": -0.00338,
+   "improvement_high": -0.00243
+  },
+  {
+   "platform": "Polymarket",
+   "horizon": "1h",
+   "split": "2025-07-01",
+   "train_n": 3683,
+   "test_n": 25301,
+   "test_events": 17603,
+   "b": 1.05808,
+   "brier_raw": 0.0943,
+   "brier_recal": 0.09512,
+   "improvement": -0.00874,
+   "improvement_low": -0.01037,
+   "improvement_high": -0.0071
   }
  ],
  "early_close_share": 0.09966,

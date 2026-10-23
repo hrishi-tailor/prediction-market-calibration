@@ -82,3 +82,25 @@ def test_closed_early():
     )
     assert dataset.closed_early({"end": None, "closed": "2025-03-01 12:00:00+00"}) is None
     assert dataset.closed_early(None) is None
+
+
+def test_kalshi_volume_before_counts_only_the_trailing_window():
+    rows = [
+        [ts(CLOSE - timedelta(days=3)), 0.5, 0.52, 0.51, 100],
+        [ts(CLOSE - timedelta(hours=30)), 0.5, 0.52, 0.51, 7],
+        [ts(CLOSE - timedelta(hours=20)), 0.5, 0.52, 0.51, 40],
+        [ts(CLOSE - timedelta(hours=1)), 0.5, 0.52, 0.51, 3],
+    ]
+    t = ts(CLOSE - timedelta(hours=1))
+    # 24h window ending at t covers the candles 20h and 1h before close, not the 30h one.
+    assert dataset.kalshi_volume_before(rows, t, timedelta(hours=24)) == 43
+
+
+def test_kalshi_rows_carry_recent_volume():
+    candles = [
+        [ts(CLOSE - timedelta(days=2)), 0.4, 0.42, 0.41, 50],
+        [ts(CLOSE - timedelta(hours=30)), 0.4, 0.42, 0.41, 5],
+    ]
+    rows = {r["horizon"]: r for r in dataset.kalshi_rows(kalshi_market(), candles)}
+    assert rows["1d"]["volume_24h"] == 5
+    assert rows["1h"]["volume_24h"] == 0

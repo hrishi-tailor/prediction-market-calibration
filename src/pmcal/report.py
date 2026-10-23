@@ -82,8 +82,29 @@ def top_categories(df: pd.DataFrame) -> pd.Series:
     return pd.Series(np.where(keys.isin(keep), df["category"], "Other"), index=df.index)
 
 
+# Train the out-of-sample forecast test on markets closing before this date.
+OOS_SPLIT = "2025-07-01"
+OOS_HORIZONS = ("1d", "1h")
+RECENT_LEVELS = ["None", "Light", "Heavy"]
+
+
+def recent_trading(df: pd.DataFrame) -> pd.Series:
+    """None / Light / Heavy trading in the 24 hours before the price (Kalshi only).
+
+    About a third of Kalshi prices follow a day with no trades, so terciles
+    would split ties arbitrarily; traded rows are split at their median instead.
+    """
+    v = df["volume_24h"]
+    traded = v > 0
+    median = v[traded].median()
+    level = np.where(~traded, "None", np.where(v <= median, "Light", "Heavy"))
+    return pd.Series(level, index=df.index).where(v.notna())
+
+
 def subgroup_slopes(df: pd.DataFrame) -> pd.DataFrame:
     df = df.assign(category=top_categories(df), volume_tercile=models.volume_terciles(df))
+    if "volume_24h" in df:
+        df["recent_trading"] = recent_trading(df)
     head = df[df["horizon"] == HEADLINE_HORIZON]
     frames = []
     for platform in df["platform"].unique():
@@ -91,8 +112,11 @@ def subgroup_slopes(df: pd.DataFrame) -> pd.DataFrame:
         for column, data, prefix in (
             ("horizon", p_all, "Horizon"),
             ("volume_tercile", p_head, "Volume"),
+            ("recent_trading", p_head, "Recent trading"),
             ("category", p_head, "Category"),
         ):
+            if column not in data or data[column].isna().all():
+                continue
             s = models.slopes_by(data, column)
             if s.empty:
                 continue
@@ -102,6 +126,64 @@ def subgroup_slopes(df: pd.DataFrame) -> pd.DataFrame:
             s["level"] = s[column].astype(str)
             frames.append(s.drop(columns=[column]))
     return pd.concat(frames, ignore_index=True)
+
+
+def by_period(df: pd.DataFrame) -> pd.DataFrame:
+    """Calibration slope per half-year, one day before close, with what changed in the mix."""
+    head = df[df["horizon"] == HEADLINE_HORIZON].assign(
+        period=lambda d: models.period_label(d["close_time"])
+    )
+    frames = []
+    for platform, g in head.groupby("platform"):
+        s = models.slopes_by(g, "period", min_events=50)
+        mix = g.groupby("period").agg(
+            median_volume=("volume", "median"),
+            weather_share=("category", lambda c: c.str.contains("Weather").mean()),
+        )
+        s = s.merge(mix, left_on="period", right_index=True)
+        s["platform"] = platform
+        order = models.period_order(s["period"])
+        s["order"] = s["period"].map({p: i for i, p in enumerate(order)})
+        frames.append(s.sort_values("order").drop(columns="order"))
+    return pd.concat(frames, ignore_index=True)
+
+
+def composition(df: pd.DataFrame) -> pd.DataFrame:
+    """Polymarket's latest year against earlier ones, with and without weather markets.
+
+    Weather markets are overconfident and their share jumped, so this separates a
+    real change in calibration from a change in what the platform lists.
+    """
+    head = df[(df["horizon"] == HEADLINE_HORIZON) & (df["platform"] == "Polymarket")]
+    if head.empty:
+        return pd.DataFrame()
+    year = pd.to_datetime(head["close_time"], utc=True).dt.year
+    latest = int(year.max())
+    rows = []
+    for sample, data in (
+        ("all markets", head),
+        ("without weather", head[~head["category"].str.contains("Weather")]),
+    ):
+        y = pd.to_datetime(data["close_time"], utc=True).dt.year
+        for label, part in (
+            (f"before {latest}", data[y < latest]),
+            (str(latest), data[y == latest]),
+        ):
+            rows.append({"sample": sample, "period": label, **models.calibration_fit(part)})
+    return pd.DataFrame(rows)
+
+
+def forecast_tests(df: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for platform in ("Kalshi", "Polymarket"):
+        for horizon in OOS_HORIZONS:
+            data = df[(df["platform"] == platform) & (df["horizon"] == horizon)]
+            if data.empty:
+                continue
+            rows.append(
+                {"platform": platform, "horizon": horizon, **models.out_of_sample(data, OOS_SPLIT)}
+            )
+    return pd.DataFrame(rows)
 
 
 def run() -> dict[str, Any]:
@@ -151,10 +233,20 @@ def run() -> dict[str, Any]:
     on_time = df[(df["platform"] == "Polymarket") & (df["closed_early"] == False)]  # noqa: E712
     on_time_summary = summary_rows(on_time) if len(on_time) else pd.DataFrame()
 
-    write_markdown(df, summary, reliability, returns, slopes, drivers, carry, on_time_summary)
+    extras = {
+        "by_period": by_period(df),
+        "composition": composition(df),
+        "forecast": forecast_tests(df),
+    }
+    plots.slopes_over_time(extras["by_period"])
+
+    write_markdown(
+        df, summary, reliability, returns, slopes, drivers, carry, on_time_summary, extras
+    )
     result = {
         "summary": summary.to_dict(orient="records"),
         "polymarket_on_time": on_time_summary.to_dict(orient="records"),
+        **{k: v.to_dict(orient="records") for k, v in extras.items()},
         "slopes": slopes.drop(columns=["label"]).to_dict(orient="records"),
         "carry_distortion": carry,
     }
@@ -162,7 +254,15 @@ def run() -> dict[str, Any]:
         json.dump(result, f, indent=2, default=str)
     site_data.write(
         site_data.build(
-            df, summary, reliability, returns, slopes, carry, on_time_summary, HEADLINE_HORIZON
+            df,
+            summary,
+            reliability,
+            returns,
+            slopes,
+            carry,
+            on_time_summary,
+            HEADLINE_HORIZON,
+            extras,
         )
     )
     log.info("Wrote figures to %s and report to %s", config.FIGURES_DIR, config.REPORTS_DIR)
@@ -170,7 +270,7 @@ def run() -> dict[str, Any]:
 
 
 def write_markdown(
-    df, summary, reliability, returns, slopes, drivers, carry, on_time_summary
+    df, summary, reliability, returns, slopes, drivers, carry, on_time_summary, extras
 ) -> None:
     pct = ".1%"
     lines = ["# Results", "", "Generated by `pmcal analyze`. Do not edit by hand.", ""]
@@ -269,6 +369,76 @@ def write_markdown(
             ),
             "",
         ]
+
+    lines += ["## Calibration over time, one day before close", ""]
+    lines += [
+        "Calibration slope per half-year of closing date (markets before 2025 pooled), "
+        "with each period's median lifetime volume and share of weather markets.",
+        "",
+    ]
+    bp = extras["by_period"]
+    lines += [
+        md_table(
+            bp.assign(ci=bp.apply(lambda r: f"[{r.b_low:.2f}, {r.b_high:.2f}]", axis=1))[
+                ["platform", "period", "n", "events", "b", "ci", "median_volume", "weather_share"]
+            ],
+            {"b": ".3f", "median_volume": ",.0f", "weather_share": ".1%"},
+        ),
+        "",
+    ]
+    comp = extras["composition"]
+    if not comp.empty:
+        lines += ["### Polymarket: change in calibration or change in mix?", ""]
+        lines += [
+            md_table(
+                comp.assign(ci=comp.apply(lambda r: f"[{r.b_low:.2f}, {r.b_high:.2f}]", axis=1))[
+                    ["sample", "period", "n", "events", "b", "ci"]
+                ],
+                {"b": ".3f"},
+            ),
+            "",
+        ]
+    lines += [f"## Out-of-sample forecast test (train before {OOS_SPLIT})", ""]
+    lines += [
+        "The calibration regression is fitted on markets closing before the split and "
+        "applied to prices of later markets. `improvement` is the share of the raw Brier "
+        "score removed by the correction (negative: the correction made forecasts worse), "
+        "with an event-clustered bootstrap CI.",
+        "",
+    ]
+    fc = extras["forecast"]
+    lines += [
+        md_table(
+            fc.assign(
+                ci=fc.apply(
+                    lambda r: f"[{r.improvement_low:+.2%}, {r.improvement_high:+.2%}]", axis=1
+                )
+            )[
+                [
+                    "platform",
+                    "horizon",
+                    "train_n",
+                    "test_n",
+                    "b",
+                    "brier_raw",
+                    "brier_recal",
+                    "improvement",
+                    "ci",
+                    "logloss_raw",
+                    "logloss_recal",
+                ]
+            ],
+            {
+                "b": ".3f",
+                "brier_raw": ".5f",
+                "brier_recal": ".5f",
+                "improvement": "+.2%",
+                "logloss_raw": ".4f",
+                "logloss_recal": ".4f",
+            },
+        ),
+        "",
+    ]
 
     lines += ["## Reliability tables", ""]
     for (platform, horizon), table in reliability.items():

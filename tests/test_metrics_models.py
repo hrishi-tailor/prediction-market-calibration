@@ -113,3 +113,30 @@ def test_drivers_model_has_finite_intervals():
     out = models.drivers_model(df)
     assert np.isfinite(out[["low", "high"]].to_numpy()).all()
     assert not any("Tiny" in term for term in out.index)
+
+
+def with_dates(df, start="2024-01-01", end="2026-06-30"):
+    rng = np.random.default_rng(5)
+    days = (pd.Timestamp(end) - pd.Timestamp(start)).days
+    offsets = rng.integers(0, days, len(df))
+    return df.assign(close_time=pd.Timestamp(start, tz="UTC") + pd.to_timedelta(offsets, unit="D"))
+
+
+def test_period_label():
+    ct = pd.Series(
+        pd.to_datetime(["2023-05-01", "2025-03-01", "2025-09-30", "2026-07-01"], utc=True)
+    )
+    labels = models.period_label(ct)
+    assert list(labels) == ["2021–24", "2025 H1", "2025 H2", "2026 H2"]
+    assert models.period_order(labels) == ["2021–24", "2025 H1", "2025 H2", "2026 H2"]
+
+
+def test_out_of_sample_helps_only_when_the_bias_is_real():
+    biased = with_dates(simulate(n=40_000, slope=1.5, seed=3))
+    result = models.out_of_sample(biased, "2025-06-01", n_boot=200)
+    assert result["improvement_low"] > 0
+    assert result["brier_recal"] < result["brier_raw"]
+
+    honest = with_dates(simulate(n=40_000, slope=1.0, seed=4))
+    result = models.out_of_sample(honest, "2025-06-01", n_boot=200)
+    assert result["improvement_low"] < 0 < result["improvement_high"]

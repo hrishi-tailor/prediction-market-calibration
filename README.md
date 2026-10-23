@@ -9,7 +9,8 @@ When a prediction market prices an outcome at 70¢, does it happen 70% of the ti
 This project tests that on **46,168 resolved markets** from Kalshi and Polymarket
 (118,093 price observations, 2021–2026). It measures each market's price at fixed
 horizons before close, compares it with what actually happened, tests for the
-favourite–longshot bias, and asks whether any mispricing survives trading costs.
+favourite–longshot bias, tracks it over time, and asks whether any mispricing survives
+trading costs or can be used to forecast better than the market.
 
 ## Findings
 
@@ -21,21 +22,35 @@ favourite–longshot bias, and asks whether any mispricing survives trading cost
    from 1.02 thirty days out to **1.11 one day out and 1.22 one hour out**. Part of
    that is Kalshi's 1¢ tick floor at the extremes, but the bias survives with the
    tails excluded (1.08 at one day, 95% CI 1.02–1.14).
-3. **The bias lives in thin markets.** Kalshi's least-traded third of markets has a
-   slope of 1.18; the most-traded third is calibrated (1.02). Politics is the most
-   biased category (1.28).
-4. **Polymarket shows no favourite–longshot bias.** If anything its mid-range prices
-   are slightly *overconfident* close to resolution (slope 0.91–0.93 on 5–95¢
-   prices), most of all in high-volume markets (0.89) and weather markets (0.82).
-5. **None of it is a free lunch.** Buying Kalshi longshots at the ask loses heavily:
+3. **The bias lives in less popular markets, not in quiet moments.** Kalshi's
+   least-traded third of markets (by lifetime volume) has a slope of 1.18; the
+   most-traded third is calibrated (1.02). Politics is the most biased category
+   (1.28). But split by trading in the 24 hours before each price, the bias is about
+   the same with no trades, light trading or heavy trading (1.10, 1.09, 1.17). It
+   belongs to the kind of market, not to a lull in activity.
+4. **Kalshi's bias has been smaller since its growth took off, but persists.** By
+   closing date, the one-day slope was 1.31 for markets before 2025 (95% CI
+   1.12–1.51) and 1.04–1.13 in each half-year since.
+5. **Polymarket's apparent decline in 2026 is a change in what it lists.** Its
+   one-day slope fell from 1.02 before 2026 to 0.92 in 2026 (overconfident). Over
+   the same period weather markets rose from 5% to 29% of its listings, and they
+   are the overconfident category (0.82). Excluding them, 2026 is 0.99: no change.
+6. **None of it is a free lunch.** Buying Kalshi longshots at the ask loses heavily:
    **−89% per dollar for 0–2¢ contracts**, −34% at 10–20¢. Buying favourites or fading
    longshots loses only 0–2% after the spread and taker fee. No price bucket earns a
    significantly positive return.
+7. **Nor is it a forecasting edge.** A calibration correction learned on markets that
+   closed before July 2025 and applied to the 36,097 later one-day prices does not
+   beat the market's own odds: Kalshi's Brier score changes by +0.02% (95% CI −0.24%
+   to +0.25%), and Polymarket's gets slightly worse. A bias you can measure after the
+   fact isn't one you can use.
 
 ![Calibration gap by platform and horizon](figures/calibration_gap.png)
 
 Each point is a price bucket: how much more often the outcome happened than the
 price implied. Shaded bands are 95% confidence intervals, clustered by event.
+
+![Calibration slope over time](figures/slopes_over_time.png)
 
 ![Returns from trading at the quote on Kalshi](figures/returns_by_price.png)
 
@@ -94,11 +109,11 @@ had a quote within 10¢.
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 The quickest route uses the dataset attached to the
-[v1.0.0 release](https://github.com/hrishi-tailor/prediction-market-calibration/releases/tag/v1.0.0):
+[v1.1.0 release](https://github.com/hrishi-tailor/prediction-market-calibration/releases/tag/v1.1.0):
 
 ```bash
 uv sync
-gh release download v1.0.0 -p observations.parquet -D data
+gh release download v1.1.0 -p observations.parquet -D data
 make analyze            # figures/ and reports/, in about a minute
 ```
 
@@ -159,8 +174,9 @@ into a horizon.
 
 ## Limitations
 
-- Lifetime volume is measured after the fact, so "high volume" means markets that
-  *ended up* liquid, not liquidity at the moment of the price.
+- Lifetime volume is measured after the fact. For Kalshi, the 24-hour trading measure
+  shows what a trader could see at the time; Polymarket's history has no volume, so its
+  volume split is lifetime-only.
 - Polymarket's price history is a single price per point with no bid or ask, so
   Polymarket returns can't be computed honestly and aren't reported.
 - Kalshi doesn't expose a scheduled close separate from the actual one, so the
