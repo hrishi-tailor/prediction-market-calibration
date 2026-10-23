@@ -137,14 +137,47 @@ which looks exactly like a favourite–longshot bias. At 5% a year the largest
 possible distortion is 0.21¢ at 30 days and 0.01¢ at 1 day, so any bias much
 larger than that cannot be a cost-of-capital effect.
 
-## 8. Known limitations
+## 8. Is the bias changing over time?
+
+Each market is labelled by when it closed: half-years from 2025 on, and one pooled
+"2021–24" period because the sample has fewer early markets. The calibration
+regression is refitted within each period, one day before close. A change in slope
+can mean the market itself changed, or that the *mix* of markets changed, so each
+period also reports its share of weather markets and its median volume. For
+Polymarket the 2026 slope is refitted with and without weather markets, which
+separates the two explanations.
+
+## 9. Could the bias be used to forecast?
+
+Statistical significance doesn't make a bias useful. The out-of-sample test fits the
+calibration regression on markets that closed before 1 July 2025, applies the
+fitted correction `sigmoid(a + b·logit(price))` to the prices of every later market,
+and compares Brier scores with the raw prices. The improvement's confidence interval
+is an event-clustered bootstrap over the test markets. If the bias were stable and
+large, the corrected prices would be measurably more accurate.
+
+## 10. Liquidity at the moment of the price
+
+Lifetime volume is only known after a market closes, so "thin markets" by lifetime
+volume might really mean "less popular kinds of market". For Kalshi, the dataset
+also records the contracts traded in the 24 hours before each price, from the hourly
+candles. That's the liquidity a trader could actually see. About a third of one-day
+Kalshi prices follow a day with no trades, so prices are grouped into no trades,
+light trading and heavy trading (split at the median of the rest). Polymarket's
+price history carries no volume, so this is Kalshi-only.
+
+## 11. Known limitations
 
 - Polymarket's 30-day horizon relies on 12-hourly or daily points, and its
   "price" is the last traded or mid price without a spread.
-- Lifetime volume is measured at the end, so the volume split is "markets that
-  ended up liquid", not liquidity at the time of the price.
+- Lifetime volume is measured after the fact. For Kalshi, the 24-hour trading measure
+  shows what a trader could see at the time; Polymarket's history has no volume, so its
+  volume split is lifetime-only.
 - Kalshi's per-series listing reads the most recent 1,000 markets per series
   per endpoint, so very long-running daily series are sampled from their recent
   history.
+- The same recency tilt thins the early time periods: markets closing before 2025 are
+  fewer, so their intervals are wider, and the over-time comparison is between a
+  pooled early period and better-sampled recent half-years.
 - Categories come from each platform's own labels, which are not comparable
   one-to-one across platforms.

@@ -130,6 +130,23 @@ function fillText() {
   document.querySelectorAll('[data-count="total-markets"]').forEach((el) => (el.dataset.target = data.totals.markets));
   document.querySelectorAll('[data-count="total-observations"]').forEach((el) => (el.dataset.target = data.totals.observations));
 
+  // Time trend, Polymarket mix and the forecast test.
+  const kPeriods = data.by_period.filter((r) => r.platform === "Kalshi");
+  if (kPeriods.length) setField("kalshi-early-b", fmtB(kPeriods[0].b));
+  const pPeriods = data.by_period.filter((r) => r.platform === "Polymarket");
+  if (pPeriods.length) {
+    const latest = pPeriods[pPeriods.length - 1].period.slice(0, 4);
+    const share = (rows) => d3.sum(rows, (r) => r.weather_share * r.n) / d3.sum(rows, (r) => r.n);
+    setField("latest-year", latest);
+    setField("weather-share", fmtPct(share(pPeriods.filter((r) => r.period.startsWith(latest))), 0));
+    setField("weather-share-before", fmtPct(share(pPeriods.filter((r) => !r.period.startsWith(latest))), 0));
+  }
+  const day = data.forecast.filter((r) => r.horizon === data.headline_horizon);
+  if (day.length) {
+    setField("oos-test-n", fmtInt(d3.sum(day, (r) => r.test_n)));
+    setField("oos-split", new Date(`${day[0].split}T00:00:00Z`).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }));
+  }
+
   const rows = kalshiDay();
   const low = rows[0];
   const high = rows[rows.length - 1];
@@ -340,7 +357,7 @@ const heroHi = (r) => (state.view === "curve" ? r.ci_high : r.ci_high - r.mean_p
 function buildHero() {
   const c = colors();
   const el = document.getElementById("hero-chart");
-  const w = Math.max(300, el.clientWidth);
+  const w = Math.max(280, el.clientWidth);
   const h = Math.min(w, 560);
   const m = { top: 14, right: 14, bottom: 46, left: 50 };
   el.replaceChildren();
@@ -503,7 +520,7 @@ function togglePlay() {
 function drawSlopes() {
   const c = colors();
   const el = document.getElementById("slope-chart");
-  const w = Math.max(300, el.clientWidth);
+  const w = Math.max(280, el.clientWidth);
   const narrow = w < 560;
   const h = narrow ? 340 : 380;
   const m = { top: 24, right: narrow ? 92 : 128, bottom: 40, left: 46 };
@@ -565,6 +582,135 @@ function drawSlopes() {
   document.getElementById("slope-table").innerHTML = table(
     ["Platform", "Before close", "Slope, all prices", "95% CI", "Slope, 5–95¢", "95% CI"],
     data.summary.map((r) => [r.platform, HORIZON_LABEL[r.horizon], fmtB(r.b), `${fmtB(r.b_low)}–${fmtB(r.b_high)}`, fmtB(r.b_mid), `${fmtB(r.b_mid_low)}–${fmtB(r.b_mid_high)}`])
+  );
+}
+
+// ---------- calibration over time ----------
+function drawPeriods() {
+  const c = colors();
+  const el = document.getElementById("period-chart");
+  const rows = data.by_period;
+  if (!rows.length) return;
+  const w = Math.max(280, el.clientWidth);
+  const narrow = w < 560;
+  const h = narrow ? 320 : 360;
+  const m = { top: 24, right: narrow ? 92 : 120, bottom: 40, left: 46 };
+  el.replaceChildren();
+
+  const periods = [...new Set(rows.map((r) => r.period))];
+  const x = d3.scalePoint(periods, [m.left, w - m.right]).padding(0.4);
+  const y = d3.scaleLinear([Math.min(0.85, d3.min(rows, (r) => r.b_low)) - 0.02, Math.max(1.15, d3.max(rows, (r) => r.b_high)) + 0.02], [h - m.bottom, m.top]);
+  const dx = { Kalshi: -6, Polymarket: 6 };
+  const px = (r) => x(r.period) + dx[r.platform];
+
+  const svg = d3.select(el).append("svg").attr("width", w).attr("height", h).attr("viewBox", `0 0 ${w} ${h}`);
+  svg.append("rect").attr("x", m.left).attr("width", w - m.left - m.right).attr("y", m.top).attr("height", y(1) - m.top)
+    .attr("fill", css("--accent-soft")).attr("opacity", 0.45);
+  const gy = svg.append("g").attr("transform", `translate(${m.left},0)`)
+    .call(d3.axisLeft(y).ticks(6).tickSize(-(w - m.left - m.right)).tickPadding(10).tickFormat(d3.format(".1f")));
+  axisStyle(gy, c);
+  const gx = svg.append("g").attr("transform", `translate(0,${h - m.bottom})`).call(d3.axisBottom(x).tickSize(0).tickPadding(14));
+  axisStyle(gx, c);
+  svg.append("line").attr("x1", m.left).attr("x2", w - m.right).attr("y1", y(1)).attr("y2", y(1)).attr("stroke", c.ink2).attr("stroke-dasharray", "4 5");
+  // Top-right: the early-period whisker fills the top-left corner.
+  svg.append("text").attr("x", w - m.right - 8).attr("y", m.top).attr("dy", "1.1em").attr("text-anchor", "end").attr("fill", c.accent).attr("font-size", 11).text("long shots overpriced ↑");
+  svg.append("text").attr("x", m.left + 8).attr("y", h - m.bottom - 10).attr("fill", c.muted).attr("font-size", 11).text("↓ prices overconfident");
+
+  for (const p of PLATFORMS) {
+    const sub = rows.filter((r) => r.platform === p);
+    if (!sub.length) continue;
+    svg.append("path").datum(sub).attr("fill", "none").attr("stroke", c[p]).attr("stroke-width", 1.6).attr("opacity", 0.6)
+      .attr("d", d3.line().x(px).y((r) => y(r.b)));
+    const last = sub[sub.length - 1];
+    const label = svg.append("text").attr("x", w - m.right + 12).attr("y", y(last.b)).attr("fill", c[p]).attr("font-size", 12).attr("font-weight", 500);
+    if (narrow) {
+      label.attr("dy", "-0.2em");
+      label.append("tspan").text(p.toLowerCase());
+      label.append("tspan").attr("x", w - m.right + 12).attr("dy", "1.2em").text(fmtB(last.b));
+    } else {
+      label.attr("dy", "0.35em").text(`${p.toLowerCase()} ${fmtB(last.b)}`);
+    }
+  }
+  const g = svg.append("g").selectAll("g").data(rows).join("g");
+  g.append("line").attr("x1", px).attr("x2", px).attr("y1", (r) => y(r.b_low)).attr("y2", (r) => y(r.b_high))
+    .attr("stroke", (r) => c[r.platform]).attr("stroke-width", 2).attr("stroke-linecap", "round").attr("opacity", 0.75);
+  g.append("circle").attr("cx", px).attr("cy", (r) => y(r.b)).attr("r", 5).attr("fill", (r) => c[r.platform]).attr("stroke", c.paper).attr("stroke-width", 1.5);
+  g.append("circle").attr("cx", px).attr("cy", (r) => y(r.b)).attr("r", 13).attr("fill", "transparent")
+    .on("pointermove", (event, r) => showTip(event, `${r.platform}, markets closing ${r.period}`, [
+      `${fmtInt(r.n)} prices from ${fmtInt(r.events)} events`,
+      `slope ${fmtB(r.b)} (95% CI ${fmtB(r.b_low)}–${fmtB(r.b_high)})`,
+      `weather markets ${fmtPct(r.weather_share, 0)} of the mix`,
+    ]))
+    .on("pointerleave", hideTip);
+
+  const comp = (sample, latest) => data.composition.find((r) => r.sample === sample && (latest ? !r.period.startsWith("before") : r.period.startsWith("before")));
+  const all = comp("all markets", true);
+  const clean = comp("without weather", true);
+  const year = all ? all.period : "";
+  const share = document.querySelector('[data-field="weather-share"]')?.textContent;
+  document.getElementById("mix-card").innerHTML = all && clean
+    ? `<div class="mix__item"><span class="mix__n">${share}</span><span class="mix__l">of Polymarket's ${year} markets were about the weather</span></div>` +
+      `<div class="mix__item"><span class="mix__n">${fmtB(all.b)}</span><span class="mix__l">Polymarket's ${year} slope, all markets: overconfident</span></div>` +
+      `<div class="mix__item"><span class="mix__n">${fmtB(clean.b)}</span><span class="mix__l">the same, without weather markets: honest odds</span></div>`
+    : "";
+
+  document.getElementById("period-table").innerHTML = table(
+    ["Platform", "Closing", "Prices", "Events", "Slope", "95% CI", "Weather share"],
+    rows.map((r) => [r.platform, r.period, fmtInt(r.n), fmtInt(r.events), fmtB(r.b), `${fmtB(r.b_low)}–${fmtB(r.b_high)}`, fmtPct(r.weather_share, 0)])
+  );
+}
+
+// ---------- out-of-sample forecast test ----------
+function drawForecast() {
+  const c = colors();
+  const el = document.getElementById("forecast-chart");
+  const rows = data.forecast.map((r) => ({ ...r, label: `${r.platform.toLowerCase()}, ${HORIZON_LABEL[r.horizon]} before` }));
+  if (!rows.length) return;
+  const w = Math.max(280, el.clientWidth);
+  const narrow = w < 520;
+  const rowH = 44;
+  const m = { top: 30, right: 20, bottom: 40, left: narrow ? 104 : 170 };
+  const h = m.top + rows.length * rowH + m.bottom;
+  el.replaceChildren();
+
+  const lim = Math.max(0.01, d3.max(rows, (r) => Math.max(Math.abs(r.improvement_low), Math.abs(r.improvement_high)))) * 1.15;
+  const x = d3.scaleLinear([-lim, lim], [m.left, w - m.right]);
+  const svg = d3.select(el).append("svg").attr("width", w).attr("height", h).attr("viewBox", `0 0 ${w} ${h}`);
+  const gx = svg.append("g").attr("transform", `translate(0,${h - m.bottom})`)
+    .call(d3.axisBottom(x).ticks(narrow ? 4 : 6).tickSize(-(h - m.bottom - m.top)).tickPadding(10)
+      .tickFormat((d) => (Math.abs(d) < 1e-9 ? "0" : `${d > 0 ? "+" : "−"}${(Math.abs(d) * 100).toFixed(1)}%`)));
+  axisStyle(gx, c);
+  svg.append("line").attr("x1", x(0)).attr("x2", x(0)).attr("y1", m.top - 6).attr("y2", h - m.bottom).attr("stroke", c.ink2).attr("stroke-dasharray", "4 5");
+  svg.append("text").attr("x", x(0) + 8).attr("y", m.top - 12).attr("fill", c.yes).attr("font-size", 11).text("correction helps →");
+  svg.append("text").attr("x", x(0) - 8).attr("y", m.top - 12).attr("text-anchor", "end").attr("fill", c.muted).attr("font-size", 11).text("← market's odds better");
+
+  rows.forEach((r, i) => {
+    const yy = m.top + i * rowH + rowH / 2;
+    const clear = r.improvement_low > 0 || r.improvement_high < 0;
+    const label = svg.append("text").attr("x", m.left - 14).attr("y", yy).attr("text-anchor", "end").attr("fill", c.ink).attr("font-size", 12);
+    if (narrow) {
+      // Two lines so the label fits the narrow left margin.
+      label.append("tspan").attr("x", m.left - 14).attr("dy", "-0.25em").text(r.platform.toLowerCase());
+      label.append("tspan").attr("x", m.left - 14).attr("dy", "1.2em").attr("fill", c.muted).text(`${HORIZON_LABEL[r.horizon]} before`);
+    } else {
+      label.attr("dy", "0.35em").text(r.label);
+    }
+    svg.append("line").attr("x1", x(r.improvement_low)).attr("x2", x(r.improvement_high)).attr("y1", yy).attr("y2", yy)
+      .attr("stroke", c[r.platform]).attr("stroke-width", 2.5).attr("stroke-linecap", "round").attr("opacity", 0.8);
+    svg.append("circle").attr("cx", x(r.improvement)).attr("cy", yy).attr("r", 5.5)
+      .attr("fill", clear ? c[r.platform] : c.paper).attr("stroke", c[r.platform]).attr("stroke-width", 2);
+    svg.append("rect").attr("x", 0).attr("y", yy - rowH / 2).attr("width", w).attr("height", rowH).attr("fill", "transparent")
+      .on("pointermove", (event) => showTip(event, `${r.platform}, ${HORIZON_LABEL[r.horizon]} before close`, [
+        `learned on ${fmtInt(r.train_n)} earlier prices, tested on ${fmtInt(r.test_n)}`,
+        `accuracy change ${fmtSigned(r.improvement, 2)} (95% CI ${fmtSigned(r.improvement_low, 2)} to ${fmtSigned(r.improvement_high, 2)})`,
+        clear ? (r.improvement > 0 ? "the correction clearly helped" : "the correction clearly hurt") : "no clear difference",
+      ]))
+      .on("pointerleave", hideTip);
+  });
+
+  document.getElementById("forecast-table").innerHTML = table(
+    ["Platform", "Before close", "Trained on", "Tested on", "Brier, market", "Brier, corrected", "Change", "95% CI"],
+    data.forecast.map((r) => [r.platform, HORIZON_LABEL[r.horizon], fmtInt(r.train_n), fmtInt(r.test_n), r.brier_raw.toFixed(4), r.brier_recal.toFixed(4), fmtSigned(r.improvement, 2), `${fmtSigned(r.improvement_low, 2)} to ${fmtSigned(r.improvement_high, 2)}`])
   );
 }
 
@@ -635,11 +781,15 @@ function wireSim() {
 // ---------- fig. 3: slope by volume and category ----------
 function forestRows(platform) {
   const rows = data.slopes.filter((r) => r.platform === platform);
+  const popularity = { Low: "least popular third", Mid: "middle third", High: "most popular third" };
+  const recentLabel = { None: "no trades", Light: "light trading", Heavy: "heavy trading" };
   const volume = ["Low", "Mid", "High"].map((l) => rows.find((r) => r.group === "Volume" && r.level === l)).filter(Boolean);
+  const recent = ["None", "Light", "Heavy"].map((l) => rows.find((r) => r.group === "Recent trading" && r.level === l)).filter(Boolean);
   const category = rows.filter((r) => r.group === "Category").sort((a, b) => b.b - a.b);
   return [
-    { header: "by trading volume" },
-    ...volume.map((r) => ({ ...r, label: `${r.level.toLowerCase()} volume` })),
+    { header: "by popularity" },
+    ...volume.map((r) => ({ ...r, label: popularity[r.level] })),
+    ...(recent.length ? [{ header: "by trading, last 24h" }, ...recent.map((r) => ({ ...r, label: recentLabel[r.level] }))] : []),
     { header: "by topic" },
     ...category.map((r) => ({ ...r, label: r.level.toLowerCase().replace(" and ", " & ") })),
   ];
@@ -764,6 +914,8 @@ function drawReturns() {
 function drawCharts() {
   buildHero();
   drawSlopes();
+  drawPeriods();
+  drawForecast();
   drawForest();
   drawReturns();
 }

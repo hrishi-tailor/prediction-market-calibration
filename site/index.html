@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Are Prediction Markets Calibrated? | Hrishi Tailor</title>
-  <meta name="description" content="When a prediction market says 70%, does it happen 70% of the time? An interactive look at 46,168 resolved Kalshi and Polymarket markets.">
+  <meta name="description" content="When a prediction market says 70%, does it happen 70% of the time? An interactive look at 46,168 resolved Kalshi and Polymarket markets, and exactly where the odds go wrong.">
   <meta name="author" content="Hrishi Tailor">
   <meta name="theme-color" content="#f6f0e6">
   <link rel="canonical" href="https://hrishitailor.com/prediction-markets/">
@@ -52,7 +52,7 @@
         <h1>When a market says <span class="hl">70%</span>, does it happen 70% of the time?</h1>
         <p class="dek">Prediction markets let people bet on real-world events, and their prices are read as odds. I
           checked <strong class="count" data-count="total-markets">46,168</strong> of them against what actually
-          happened.</p>
+          happened, and found exactly where the odds go wrong.</p>
         <a class="cta" href="#game">test your intuition first <span aria-hidden="true">↓</span></a>
       </div>
       <div class="hero__art" aria-hidden="true">
@@ -189,9 +189,33 @@
       <details class="data-table"><summary>show the numbers</summary><div id="slope-table"></div></details>
     </figure>
 
-    <!-- 4: simulator -->
-    <section class="chapter wrap reveal" aria-labelledby="c4">
+    <!-- 4: over time -->
+    <section class="chapter wrap reveal" aria-labelledby="c4t">
       <p class="chapter__n">chapter 4</p>
+      <h2 id="c4t">Is it getting better?</h2>
+      <p>Kalshi has grown enormously since 2021. If the bias came from a young market with few traders, it should
+        fade as the market matures. It did, partly: the bias was strongest before 2025 (slope
+        <strong data-field="kalshi-early-b">1.31</strong>) and has been smaller since, but it never went away.</p>
+      <p>Polymarket looks like it got <em>worse</em> in 2026. It didn't. It started listing far more weather markets
+        (<strong data-field="weather-share">29%</strong> of its markets in <span data-field="latest-year">2026</span>, up from
+        <span data-field="weather-share-before">5%</span> before), and weather markets
+        are the overconfident ones. Take them out and 2026 is as honest as before.</p>
+    </section>
+
+    <figure class="figure wrap wrap--mid reveal" aria-labelledby="fig-t-title">
+      <figcaption class="figure__head">
+        <span class="figure__title" id="fig-t-title">How lopsided the odds are, by when the market closed</span>
+      </figcaption>
+      <div class="chart" id="period-chart" role="img" aria-label="Calibration slope by half-year of closing date, for Kalshi and Polymarket"></div>
+      <div class="mix" id="mix-card"></div>
+      <p class="figure__note">One day before close. Markets that closed before 2025 are pooled because there are fewer of
+        them. Hover a dot for its numbers.</p>
+      <details class="data-table"><summary>show the numbers</summary><div id="period-table"></div></details>
+    </figure>
+
+    <!-- 5: simulator -->
+    <section class="chapter wrap reveal" aria-labelledby="c4">
+      <p class="chapter__n">chapter 5</p>
       <h2 id="c4">So, can you get rich betting against it?</h2>
       <p>If long shots are overpriced, maybe you could profit by avoiding them, or by betting against them. Try it with
         real Kalshi prices from a day before close, including the fee you'd actually pay.</p>
@@ -244,13 +268,35 @@
       <details class="data-table"><summary>show the numbers</summary><div id="returns-table"></div></details>
     </figure>
 
+    <section class="chapter wrap reveal" aria-labelledby="c4b">
+      <h3 class="subhead" id="c4b">Could a smarter forecaster beat the market?</h3>
+      <p>Trading costs aside, maybe the bias could still sharpen a forecast. So I learned the bias from markets that
+        closed before <span data-field="oos-split">July 2025</span>, used it to correct the prices of the
+        <strong data-field="oos-test-n">36,000</strong> later ones it had never seen, and checked whether the corrected
+        odds were more accurate than the market's own.</p>
+      <p>They weren't. A bias you can measure after the fact isn't the same as an edge you can use.</p>
+    </section>
+
+    <figure class="figure wrap wrap--mid reveal" aria-labelledby="fig-f-title">
+      <figcaption class="figure__head">
+        <span class="figure__title" id="fig-f-title">Accuracy gained by correcting for the bias, on markets it never saw</span>
+      </figcaption>
+      <div class="chart" id="forecast-chart" role="img" aria-label="Change in forecast accuracy from correcting for the bias, with 95% confidence intervals"></div>
+      <p class="figure__note">Change in Brier score, the standard accuracy measure for probability forecasts, as a share of
+        the market's own. Right of zero, the correction helped; left of it, the market's raw odds were better.</p>
+      <details class="data-table"><summary>show the numbers</summary><div id="forecast-table"></div></details>
+    </figure>
+
     <!-- 5: where -->
     <section class="chapter wrap reveal" aria-labelledby="c5">
-      <p class="chapter__n">chapter 5</p>
+      <p class="chapter__n">chapter 6</p>
       <h2 id="c5">Where the odds go wrong</h2>
-      <p>The bias isn't spread evenly. On Kalshi it lives in quiet markets with little trading, and in politics. The
-        busiest markets are almost perfectly honest. Polymarket errs the other way: its busiest markets, and its weather
-        markets most of all, sound a little too sure of themselves.</p>
+      <p>The bias isn't spread evenly. On Kalshi it lives in less popular markets, and in politics; the most popular
+        markets are almost perfectly honest. Polymarket errs the other way: its weather markets sound far too sure of
+        themselves.</p>
+      <p>A twist: "less popular" is about the market, not the moment. Measured by trading in the 24 hours before each
+        price, Kalshi's bias is about the same in quiet and busy moments. It belongs to the kind of market, not to a lull in
+        trading.</p>
     </section>
 
     <figure class="figure wrap wrap--wide reveal" aria-labelledby="fig3-title">
@@ -262,13 +308,15 @@
         <div><h3 class="panel-title panel-title--poly">polymarket</h3><div class="chart" id="forest-poly" role="img" aria-label="Polymarket calibration slope by volume and category"></div></div>
       </div>
       <p class="figure__note">Filled dots are clear findings; hollow dots are consistent with honest odds. Right of the
-        dashed line, long shots are overpriced; left of it, prices are overconfident.</p>
+        dashed line, long shots are overpriced; left of it, prices are overconfident. "Popularity" is a market's total
+        trading over its life; "trading in the last 24h" is what a trader could see at the moment of the price
+        (Kalshi only, since Polymarket's history has no volume).</p>
       <details class="data-table"><summary>show the numbers</summary><div id="forest-table"></div></details>
     </figure>
 
     <!-- 6: checks -->
     <section class="chapter wrap reveal" aria-labelledby="c6">
-      <p class="chapter__n">chapter 6</p>
+      <p class="chapter__n">chapter 7</p>
       <h2 id="c6">How I know it's real</h2>
       <p>Three things could have faked these results. Each was checked.</p>
       <div class="checks">
@@ -301,6 +349,21 @@
       </div>
     </section>
 
+    <section class="outro wrap wrap--mid reveal" aria-labelledby="found">
+      <p class="eyebrow">what I found</p>
+      <h2 id="found" class="outro__a">The odds are honest on average. The exceptions are where it gets interesting.</h2>
+      <ol class="found">
+        <li><b>Kalshi overprices long shots.</b> Contracts under 2¢ lost <span data-field="longshot-return">89%</span>
+          per dollar. The bias has been smaller since Kalshi's growth took off in 2025, but it never disappeared.</li>
+        <li><b>Polymarket's 2026 slip is an illusion.</b> It's weather markets, which rose to
+          <span data-field="weather-share">29%</span> of listings. Without them, Polymarket is as honest as ever.</li>
+        <li><b>It's about the market, not the moment.</b> The bias lives in less popular markets, whatever the trading
+          that day.</li>
+        <li><b>None of it is an edge.</b> It doesn't survive trading fees, and correcting for it doesn't beat the
+          market's own forecasts on unseen data.</li>
+      </ol>
+    </section>
+
     <!-- 7: under the hood -->
     <section class="chapter wrap reveal" aria-labelledby="c7">
       <p class="chapter__n">under the hood</p>
@@ -321,7 +384,8 @@
         </ul>
         <div class="table-wrap" id="data-table"></div>
         <ul class="method method--small">
-          <li>Lifetime volume is measured after the fact, so "high volume" means markets that <em>ended up</em> liquid.</li>
+          <li>Lifetime volume is measured after the fact. For Kalshi the 24-hour trading measure shows what a trader could
+            see at the time; Polymarket's history has no volume, so its split is lifetime-only.</li>
           <li>Kalshi doesn't expose a scheduled close separate from the actual one, so the early-close check covers
             Polymarket only.</li>
           <li>The platforms list very different markets, so their overall accuracy isn't directly comparable.</li>
@@ -332,11 +396,6 @@
         <a class="btn" href="https://github.com/hrishi-tailor/prediction-market-calibration/blob/main/docs/methodology.md">full methodology</a>
         <a class="btn" href="https://github.com/hrishi-tailor/prediction-market-calibration/releases/latest">download the data</a>
       </p>
-    </section>
-
-    <section class="outro wrap reveal">
-      <p class="outro__q">So, when a market says 70%?</p>
-      <p class="outro__a">It means about 70%. Just be wary of the long shots.</p>
     </section>
   </main>
 
