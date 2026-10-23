@@ -272,62 +272,94 @@ def slope_forest(rows: pd.DataFrame) -> Path:
     return _save(fig, "slopes_by_group.png")
 
 
+# The website's warm-dark palette, so link previews match the page they open.
+CARD = {
+    "bg": "#181915",
+    "heading": "#f5f3ef",
+    "text": "#edebe7",
+    "muted": "#a09e9b",
+    "faint": "#888683",
+    "grid": "#2b2925",
+    "gold": "#eeb97b",
+    "Kalshi": "#c18434",
+    "Polymarket": "#4493d0",
+}
+
+
 def social_card(reliability: dict[str, pd.DataFrame], totals: dict[str, int], path: Path) -> Path:
     """The 1200x630 link-preview image for the project website."""
+    serif = ["Georgia", "DejaVu Serif", "serif"]
+    mono = ["Menlo", "DejaVu Sans Mono", "monospace"]
     fig = plt.figure(figsize=(12, 6.3), dpi=100)
-    fig.patch.set_facecolor(SURFACE)
-    fig.text(0.05, 0.83, "Are prediction markets", fontsize=30, fontweight="bold", color=INK)
-    fig.text(0.05, 0.75, "calibrated?", fontsize=30, fontweight="bold", color=INK)
+    fig.patch.set_facecolor(CARD["bg"])
     fig.text(
-        0.05,
-        0.66,
-        f"{totals['markets']:,} resolved Kalshi and\n"
-        "Polymarket markets, priced 30 days\nto 1 hour before close.",
-        fontsize=17,
-        color=INK_2,
-        linespacing=1.5,
-        va="top",
+        0.06, 0.86, "hrishi tailor  /  research", fontsize=13, color=CARD["faint"], family=mono
     )
+    fig.text(0.06, 0.72, "Are prediction markets", fontsize=36, color=CARD["heading"], family=serif)
+    fig.text(0.06, 0.62, "calibrated?", fontsize=36, color=CARD["heading"], family=serif)
     fig.text(
-        0.05,
-        0.38,
-        "Calibrated to 1–2 points on average.\nKalshi longshots overpriced; Polymarket not.",
-        fontsize=15,
-        color=INK,
-        linespacing=1.5,
+        0.06,
+        0.50,
+        f"{totals['markets']:,} resolved Kalshi and Polymarket\n"
+        "markets, priced 30 days to 1 hour before close.",
+        fontsize=16,
+        color=CARD["muted"],
+        linespacing=1.55,
         va="top",
+        family=serif,
     )
-    fig.text(0.05, 0.07, "Hrishi Tailor", fontsize=14, fontweight="bold", color=INK_2)
+    findings = [
+        ("01", "Prices land within 1–2 points of reality."),
+        ("02", "Kalshi overprices longshots; Polymarket doesn't."),
+        ("03", "Neither is profitable after fees."),
+    ]
+    for i, (n, text) in enumerate(findings):
+        y = 0.30 - i * 0.075
+        fig.text(0.06, y, n, fontsize=12, color=CARD["gold"], family=mono)
+        fig.text(0.1, y, text, fontsize=14, color=CARD["text"], family=serif)
 
-    ax = fig.add_axes([0.62, 0.14, 0.34, 0.72])
-    ax.plot([0, 1], [0, 1], color=MUTED, lw=1.2, ls="--", zorder=1)
+    ax = fig.add_axes([0.63, 0.14, 0.32, 0.7])
+    ax.set_facecolor(CARD["bg"])
+    ax.plot([0, 1], [0, 1], color=CARD["faint"], lw=1.2, ls=(0, (4, 4)), zorder=1)
+    dodge = {"Kalshi": -0.006, "Polymarket": 0.006}
     for platform, table in reliability.items():
-        color = PLATFORM_COLORS[platform]
+        color = CARD[platform]
         ax.errorbar(
-            table["mean_price"],
+            table["mean_price"] + dodge[platform],
             table["freq"],
             yerr=[table["freq"] - table["ci_low"], table["ci_high"] - table["freq"]],
             fmt="o",
             ms=7,
             lw=2,
             color=color,
-            mec=SURFACE,
+            mec=CARD["bg"],
             mew=1.2,
-            label=platform,
             zorder=3,
+        )
+    # The top-left corner is empty on a calibration plot, so the key goes there.
+    for i, platform in enumerate(reliability):
+        ax.text(
+            0.04,
+            0.93 - i * 0.07,
+            f"● {platform.lower()}",
+            color=CARD[platform],
+            fontsize=12,
+            family=mono,
         )
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_aspect("equal")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.grid(color=CARD["grid"], lw=0.8)
+    ax.tick_params(colors=CARD["faint"], labelsize=11, length=0)
     _cents(ax, "x")
     _cents(ax, "y")
-    ax.tick_params(labelsize=12)
-    ax.set_xlabel("Market price, 1 day before close", fontsize=12)
-    ax.set_ylabel("Resolved Yes", fontsize=12)
-    ax.legend(loc="upper left", fontsize=12)
+    ax.set_xlabel("market price, 1 day before close", fontsize=11, color=CARD["faint"], family=mono)
+    ax.set_ylabel("resolved yes", fontsize=11, color=CARD["faint"], family=mono)
     path.parent.mkdir(parents=True, exist_ok=True)
     # Social cards need an exact 1200x630 canvas, so skip the global tight cropping.
     with plt.rc_context({"savefig.bbox": "standard"}):
-        fig.savefig(path, dpi=100, facecolor=SURFACE)
+        fig.savefig(path, dpi=100, facecolor=CARD["bg"])
     plt.close(fig)
     return path
