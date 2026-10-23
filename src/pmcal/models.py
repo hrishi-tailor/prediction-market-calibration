@@ -196,3 +196,75 @@ def carry_distortion(days: float, rate: float = 0.05) -> float:
     """
     d = np.exp(-rate * days / 365)
     return float((1 - d) / 2)
+
+
+# Markets closing before this are pooled: the sample has few of them, since
+# Kalshi and Polymarket both grew sharply from 2025.
+EARLY_PERIOD_END = pd.Timestamp("2025-01-01", tz="UTC")
+EARLY_PERIOD = "2021–24"
+
+
+def period_label(close_time: pd.Series) -> pd.Series:
+    """'2021–24' for early markets, then half-years such as '2025 H1'."""
+    ct = pd.to_datetime(close_time, utc=True)
+    half = np.where(ct.dt.month <= 6, " H1", " H2")
+    label = ct.dt.year.astype(str) + half
+    return label.where(ct >= EARLY_PERIOD_END, EARLY_PERIOD)
+
+
+def period_order(labels: pd.Series) -> list[str]:
+    later = sorted(set(labels) - {EARLY_PERIOD})
+    return ([EARLY_PERIOD] if EARLY_PERIOD in set(labels) else []) + later
+
+
+def recalibrate(price: pd.Series, a: float, b: float) -> np.ndarray:
+    """Applies a fitted calibration regression to raw prices."""
+    return 1 / (1 + np.exp(-(a + b * logit(price))))
+
+
+def out_of_sample(
+    df: pd.DataFrame, split: str, n_boot: int = 1000, seed: int = config.RANDOM_SEED
+) -> dict[str, float]:
+    """Could the bias have been used to forecast better than the market?
+
+    Fits the calibration regression on markets closing before `split`, applies
+    the correction to prices of markets closing after it, and compares Brier
+    scores. `improvement` is the share of the raw Brier score removed by the
+    correction (negative means the correction made forecasts worse); its CI is an
+    event-clustered bootstrap over the test markets.
+    """
+    close = pd.to_datetime(df["close_time"], utc=True)
+    cutoff = pd.Timestamp(split, tz="UTC")
+    train, test = df[close < cutoff], df[close >= cutoff]
+    fit = calibration_fit(train)
+    y = test["outcome"].to_numpy(float)
+    p = test["price"].to_numpy(float)
+    q = recalibrate(test["price"], fit["a"], fit["b"])
+    raw = float(np.mean((p - y) ** 2))
+    gain = (p - y) ** 2 - (q - y) ** 2
+    codes = pd.factorize(test["event_id"])[0]
+    sums = np.bincount(codes, weights=gain)
+    counts = np.bincount(codes)
+    w = bootstrap_weights(len(sums), n_boot, seed=seed)
+    boot = (w @ sums) / (w @ counts)
+    lo, hi = np.percentile(boot, [2.5, 97.5])
+
+    def log_loss(f: np.ndarray) -> float:
+        f = np.clip(f, 1e-4, 1 - 1e-4)
+        return float(-np.mean(y * np.log(f) + (1 - y) * np.log(1 - f)))
+
+    return {
+        "split": split,
+        "train_n": len(train),
+        "test_n": len(test),
+        "test_events": int(test["event_id"].nunique()),
+        "a": fit["a"],
+        "b": fit["b"],
+        "brier_raw": raw,
+        "brier_recal": float(np.mean((q - y) ** 2)),
+        "improvement": float(gain.mean() / raw),
+        "improvement_low": float(lo / raw),
+        "improvement_high": float(hi / raw),
+        "logloss_raw": log_loss(p),
+        "logloss_recal": log_loss(q),
+    }
