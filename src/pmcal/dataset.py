@@ -23,6 +23,8 @@ log = logging.getLogger(__name__)
 
 # Wider spreads mean the midpoint says little about the market's belief.
 MAX_SPREAD = 0.10
+# Window for "recent trading" at the moment of each price.
+RECENT_VOLUME_WINDOW = timedelta(hours=24)
 # A market that closed this long before its scheduled end most likely closed
 # because the event happened, so its close time depends on its outcome.
 EARLY_CLOSE = timedelta(days=1)
@@ -47,6 +49,16 @@ def kalshi_quote_at(rows: Sequence[Sequence[Any]], t: int) -> tuple[float, float
     if bid is None or ask is None or not 0 <= bid <= ask <= 1:
         return None
     return bid, ask
+
+
+def kalshi_volume_before(rows: Sequence[Sequence[Any]], t: int, window: timedelta) -> float:
+    """Contracts traded in the `window` up to time t, from condensed hourly candles.
+
+    Lifetime volume is only known after a market closes; this is the liquidity a
+    trader could actually see at the moment of the price.
+    """
+    start = t - window.total_seconds()
+    return float(sum(r[4] or 0 for r in rows if start < r[0] <= t))
 
 
 def polymarket_price_at(
@@ -111,6 +123,9 @@ def kalshi_rows(market: dict[str, Any], candles: Sequence[Sequence[Any]]) -> lis
                 "price": (bid + ask) / 2,
                 "bid": bid,
                 "ask": ask,
+                "volume_24h": kalshi_volume_before(
+                    candles, int(t.timestamp()), RECENT_VOLUME_WINDOW
+                ),
             }
         )
     return rows
@@ -150,6 +165,8 @@ def polymarket_rows(
                 "price": price,
                 "bid": None,
                 "ask": None,
+                # Polymarket's price history carries no volume.
+                "volume_24h": None,
             }
         )
     return rows
