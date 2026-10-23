@@ -147,7 +147,7 @@ src/pmcal/
   plots.py        figures
   report.py       runs everything, writes reports/results.md
   site_data.py    exports the website's numbers to site/data/results.json
-site/             project website (HTML, CSS, Observable Plot)
+site/             project website (HTML, CSS, D3)
 tests/            unit tests on synthetic data with known answers
 docs/             methodology
 ```
