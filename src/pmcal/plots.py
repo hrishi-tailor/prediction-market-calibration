@@ -272,6 +272,38 @@ def slope_forest(rows: pd.DataFrame) -> Path:
     return _save(fig, "slopes_by_group.png")
 
 
+def slopes_over_time(rows: pd.DataFrame) -> Path:
+    """Calibration slope per half-year, one line per platform, with 95% CIs."""
+    periods = list(dict.fromkeys(rows["period"]))
+    x_of = {p: i for i, p in enumerate(periods)}
+    fig, ax = plt.subplots(figsize=(7.2, 3.9))
+    ax.axhline(1, color=MUTED, lw=1, ls="--")
+    for offset, (platform, color) in zip((-0.06, 0.06), PLATFORM_COLORS.items(), strict=True):
+        sub = rows[rows["platform"] == platform]
+        if sub.empty:
+            continue
+        xs = sub["period"].map(x_of) + offset
+        ax.plot(xs, sub["b"], color=color, lw=1.6, alpha=0.6)
+        ax.errorbar(
+            xs,
+            sub["b"],
+            yerr=[sub["b"] - sub["b_low"], sub["b_high"] - sub["b"]],
+            fmt="o",
+            ms=6,
+            lw=1.6,
+            color=color,
+            mec=SURFACE,
+            mew=1,
+            label=platform,
+        )
+    ax.set_xticks(range(len(periods)), periods)
+    ax.set_ylabel("Calibration slope b")
+    ax.grid(axis="x", visible=False)
+    ax.legend(loc="upper right")
+    ax.set_title("Calibration slope by closing date, one day before close", loc="left")
+    return _save(fig, "slopes_over_time.png")
+
+
 # The website's paper palette, so link previews match the page they open.
 CARD = {
     "bg": "#f6f0e6",

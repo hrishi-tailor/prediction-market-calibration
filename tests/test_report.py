@@ -27,7 +27,7 @@ def synthetic_dataset(n_markets=3_000, seed=1):
                         "title": "",
                         "volume": float(rng.lognormal(9, 1)),
                         "open_time": datetime(2025, 1, 1, tzinfo=UTC),
-                        "close_time": datetime(2025, 3, 1, tzinfo=UTC),
+                        "close_time": datetime(2024 + i % 3, 3 + (i % 2) * 6, 1, tzinfo=UTC),
                         "duration_days": 59.0,
                         "outcome": outcome,
                         "horizon": horizon,
@@ -36,6 +36,9 @@ def synthetic_dataset(n_markets=3_000, seed=1):
                         "bid": price - 0.005 if platform == "Kalshi" else None,
                         "ask": price + 0.005 if platform == "Kalshi" else None,
                         "closed_early": None if platform == "Kalshi" else bool(i % 10 == 0),
+                        "volume_24h": float(rng.poisson(50) * (i % 3 > 0))
+                        if platform == "Kalshi"
+                        else None,
                     }
                 )
     return pd.DataFrame(rows)
@@ -58,6 +61,7 @@ def test_report_runs_end_to_end(tmp_path, monkeypatch):
         "platform_comparison.png",
         "returns_by_price.png",
         "slopes_by_group.png",
+        "slopes_over_time.png",
     }
     text = (tmp_path / "reports" / "results.md").read_text()
     assert "## Calibration by platform and horizon" in text
@@ -68,6 +72,8 @@ def test_report_runs_end_to_end(tmp_path, monkeypatch):
     assert {r["platform"] for r in site["reliability"]} == {"Kalshi", "Polymarket"}
     assert site["headline"]["kalshi"]["horizon"] == "1d"
     assert (tmp_path / "site" / "og-image.png").exists()
+    assert site["by_period"] and site["forecast"] and site["composition"]
+    assert any(r["group"] == "Recent trading" for r in site["slopes"])
     assert "NaN" not in (tmp_path / "site" / "results.json").read_text()
     # Synthetic prices are calibrated (with noise), so slopes should be near 1.
     for row in result["summary"]:
