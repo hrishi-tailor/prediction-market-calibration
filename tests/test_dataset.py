@@ -104,3 +104,58 @@ def test_kalshi_rows_carry_recent_volume():
     rows = {r["horizon"]: r for r in dataset.kalshi_rows(kalshi_market(), candles)}
     assert rows["1d"]["volume_24h"] == 5
     assert rows["1h"]["volume_24h"] == 0
+
+
+def valid_frame():
+    import pandas as pd
+
+    return pd.DataFrame(
+        {
+            "platform": ["Kalshi", "Polymarket"],
+            "market_id": ["a", "b"],
+            "event_id": ["e", "f"],
+            "category": ["Economics", "Sports"],
+            "volume": [1000.0, 20000.0],
+            "open_time": [CLOSE - timedelta(days=40)] * 2,
+            "close_time": [CLOSE] * 2,
+            "outcome": [1, 0],
+            "horizon": ["1d", "1h"],
+            "price": [0.6, 0.2],
+            "bid": [0.59, None],
+            "ask": [0.61, None],
+            "volume_24h": [12.0, None],
+        }
+    )
+
+
+def test_validate_accepts_a_clean_table():
+    df = valid_frame()
+    assert dataset.validate(df) is df
+
+
+def test_validate_lists_every_broken_invariant():
+    import pytest
+
+    df = valid_frame()
+    df.loc[0, "price"] = 1.4
+    df.loc[1, "outcome"] = 2
+    df.loc[0, "bid"] = 0.9
+    with pytest.raises(dataset.DatasetError) as err:
+        dataset.validate(df)
+    message = str(err.value)
+    assert "price outside [0, 1]" in message
+    assert "outcome not 0 or 1" in message
+    assert "bid above ask" in message
+
+
+def test_validate_rejects_missing_columns():
+    import pytest
+
+    with pytest.raises(dataset.DatasetError, match="missing columns"):
+        dataset.validate(valid_frame().drop(columns=["outcome"]))
+
+
+def test_polymarket_rejects_prices_outside_zero_one():
+    t = ts(CLOSE)
+    assert dataset.polymarket_price_at([[t - 60, 1.005]], t, timedelta(hours=2)) is None
+    assert dataset.polymarket_price_at([[t - 60, 0.995]], t, timedelta(hours=2)) == 0.995

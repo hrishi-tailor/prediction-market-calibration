@@ -23,7 +23,13 @@ dependencies = [
 pmcal = "pmcal.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.5"]
+dev = [
+    "mypy>=2.4.0",
+    "pandas-stubs>=3.0.5.260914",
+    "pytest>=8",
+    "ruff>=0.5",
+    "types-tqdm>=4.70.0.20260906",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -38,6 +44,13 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "NPY"]
+
+[tool.mypy]
+files = ["src"]
+python_version = "3.12"
+# statsmodels, scipy and duckdb ship no type stubs.
+ignore_missing_imports = true
+warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

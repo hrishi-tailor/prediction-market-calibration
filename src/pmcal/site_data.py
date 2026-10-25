@@ -39,7 +39,7 @@ def _records(df: pd.DataFrame, columns: list[str]) -> list[dict[str, Any]]:
 def build(
     df: pd.DataFrame,
     summary: pd.DataFrame,
-    reliability: dict[tuple[str, str], pd.DataFrame],
+    reliability: dict[Any, pd.DataFrame],
     returns: pd.DataFrame,
     slopes: pd.DataFrame,
     carry: dict[int, float],
@@ -68,7 +68,7 @@ def build(
 
     def summary_row(platform: str, horizon: str) -> dict[str, Any]:
         row = summary[(summary["platform"] == platform) & (summary["horizon"] == horizon)]
-        return {c: _clean(v) for c, v in row.iloc[0].items()} if len(row) else {}
+        return {str(c): _clean(v) for c, v in row.iloc[0].items()} if len(row) else {}
 
     cheapest = returns.iloc[0] if len(returns) else None
     reliability_rows = []
@@ -143,7 +143,8 @@ def build(
             ],
         ),
         "slopes": _records(
-            slopes, ["platform", "group", "level", "n", "events", "b", "b_low", "b_high", "p_b1"]
+            slopes,
+            ["platform", "group", "level", "n", "events", "b", "b_low", "b_high", "p_b1", "q_bh"],
         ),
         "polymarket_on_time": _records(
             on_time_summary, ["horizon", "n", "yes_rate", "mean_price", "b", "b_low", "b_high"]
@@ -160,12 +161,16 @@ def build(
                 "b",
                 "b_low",
                 "b_high",
+                "q_bh",
                 "median_volume",
                 "weather_share",
             ],
         )
         if "by_period" in extras
         else [],
+        "multiple_testing": {k: _clean(v) for k, v in extras["multiple_testing"].iloc[0].items()}
+        if "multiple_testing" in extras
+        else None,
         "composition": _records(
             extras["composition"], ["sample", "period", "n", "events", "b", "b_low", "b_high"]
         )

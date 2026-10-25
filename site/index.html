@@ -62,7 +62,7 @@
 
     <section class="stats wrap wrap--wide reveal" aria-label="The study in numbers">
       <div class="stat"><span class="stat__n count" data-count="total-markets">46,168</span><span class="stat__l">resolved markets</span></div>
-      <div class="stat"><span class="stat__n count" data-count="total-observations">118,093</span><span class="stat__l">prices checked</span></div>
+      <div class="stat"><span class="stat__n count" data-count="total-observations">118,092</span><span class="stat__l">prices checked</span></div>
       <div class="stat"><span class="stat__n">2</span><span class="stat__l">platforms: <span class="term" tabindex="0" data-term="kalshi">Kalshi</span> &amp; <span class="term" tabindex="0" data-term="polymarket">Polymarket</span></span></div>
       <div class="stat"><span class="stat__n" data-field="year-span">5</span><span class="stat__l">years of markets</span></div>
     </section>
@@ -209,7 +209,8 @@
       <div class="chart" id="period-chart" role="img" aria-label="Calibration slope by half-year of closing date, for Kalshi and Polymarket"></div>
       <div class="mix" id="mix-card"></div>
       <p class="figure__note">One day before close. Markets that closed before 2025 are pooled because there are fewer of
-        them. Hover a dot for its numbers.</p>
+        them. Filled dots differ clearly from honest odds after correcting for multiple tests; hollow dots don't. Hover a
+        dot for its numbers.</p>
       <details class="data-table"><summary>show the numbers</summary><div id="period-table"></div></details>
     </figure>
 
@@ -307,7 +308,8 @@
         <div><h3 class="panel-title panel-title--kalshi">kalshi</h3><div class="chart" id="forest-kalshi" role="img" aria-label="Kalshi calibration slope by volume and category"></div></div>
         <div><h3 class="panel-title panel-title--poly">polymarket</h3><div class="chart" id="forest-poly" role="img" aria-label="Polymarket calibration slope by volume and category"></div></div>
       </div>
-      <p class="figure__note">Filled dots are clear findings; hollow dots are consistent with honest odds. Right of the
+      <p class="figure__note">Filled dots are clear findings that survive a correction for testing many groups at once;
+        hollow dots are consistent with honest odds. Right of the
         dashed line, long shots are overpriced; left of it, prices are overconfident. "Popularity" is a market's total
         trading over its life; "trading in the last 24h" is what a trader could see at the moment of the price
         (Kalshi only, since Polymarket's history has no volume).</p>
@@ -318,7 +320,7 @@
     <section class="chapter wrap reveal" aria-labelledby="c6">
       <p class="chapter__n">chapter 7</p>
       <h2 id="c6">How I know it's real</h2>
-      <p>Three things could have faked these results. Each was checked.</p>
+      <p>Four things could have faked these results. Each was checked.</p>
       <div class="checks">
         <div class="check">
           <div class="check__figure" data-field="kalshi-mid">1.08</div>
@@ -336,6 +338,18 @@
             <p>"Will X happen by Friday?" closes the moment X happens, so <em>when</em> it closes depends on the answer,
               which can skew a "day before close" price. That share of Polymarket markets closed early; without them the
               conclusion holds (slope <span data-field="ontime-slope">0.93</span>).</p>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check__figure" data-field="mt-figure">18/19</div>
+          <div>
+            <h3>Testing many things at once</h3>
+            <p>Test enough groups and some will look significant by luck. This page runs
+              <span data-field="mt-tests">45</span> tests; <span data-field="mt-nominal">19</span> look significant on their
+              own, and <span data-field="mt-bh">18</span> still do after correcting for the number of tests (a 5% false
+              discovery rate). The core findings (Kalshi's bias close to the deadline, in less popular markets and in
+              politics, and Polymarket's overconfident weather markets) also pass a much stricter correction that
+              <span data-field="mt-holm">12</span> tests survive.</p>
           </div>
         </div>
         <div class="check">

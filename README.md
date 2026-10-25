@@ -7,7 +7,7 @@ When a prediction market prices an outcome at 70¢, does it happen 70% of the ti
 **[Explore the interactive results →](https://hrishitailor.com/prediction-markets/)**
 
 This project tests that on **46,168 resolved markets** from Kalshi and Polymarket
-(118,093 price observations, 2021–2026). It measures each market's price at fixed
+(118,092 price observations, 2021–2026). It measures each market's price at fixed
 horizons before close, compares it with what actually happened, tests for the
 favourite–longshot bias, tracks it over time, and asks whether any mispricing survives
 trading costs or can be used to forecast better than the market.
@@ -76,6 +76,13 @@ The key design decisions, each explained in [`docs/methodology.md`](docs/methodo
 - **Event-clustered uncertainty.** Markets in the same event resolve together (one
   bracket of a CPI print wins), so every interval comes from a bootstrap or
   standard errors that treat the event, not the market, as the unit.
+- **A correction for testing many groups at once.** The 45 subgroup and time-period
+  slopes are one family of tests, adjusted with Benjamini–Hochberg (false discovery
+  rate) and Holm (family-wise error). 18 of the 19 nominally significant results
+  survive the first; the core findings also survive the second.
+- **Validated data.** The build refuses to write, and the analysis refuses to run on,
+  a dataset that breaks any invariant: prices outside 0–1, unknown horizons, a bid
+  above its ask, duplicate rows. Its first run caught one Polymarket price of 1.005.
 - **A logistic calibration regression,** `P(yes) = sigmoid(a + b·logit(price))`, to
   test the favourite–longshot bias: b > 1 means longshots are overpriced. The slope
   doesn't depend on which side of a market is labelled "Yes".
@@ -94,7 +101,7 @@ The key design decisions, each explained in [`docs/methodology.md`](docs/methodo
 |---|---|---|
 | Markets | 16,533 | 29,635 |
 | Events | 9,070 | 20,522 |
-| Observations | 44,225 | 73,868 |
+| Observations | 44,225 | 73,867 |
 | Closing dates | Jul 2021 – Aug 2026 | Dec 2022 – Oct 2026 |
 | Source | [Trade API v2](https://docs.kalshi.com) (public market data) | Gamma + CLOB public APIs |
 
@@ -109,11 +116,11 @@ had a quote within 10¢.
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 The quickest route uses the dataset attached to the
-[v1.1.0 release](https://github.com/hrishi-tailor/prediction-market-calibration/releases/tag/v1.1.0):
+[v1.2.0 release](https://github.com/hrishi-tailor/prediction-market-calibration/releases/tag/v1.2.0):
 
 ```bash
 uv sync
-gh release download v1.1.0 -p observations.parquet -D data
+gh release download v1.2.0 -p observations.parquet -D data
 make analyze            # figures/ and reports/, in about a minute
 ```
 
@@ -135,6 +142,7 @@ since.
 ```bash
 make test               # pytest
 make lint               # ruff
+make typecheck          # mypy
 ```
 
 ## Website

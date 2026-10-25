@@ -351,7 +351,7 @@ def social_card(reliability: dict[str, pd.DataFrame], totals: dict[str, int], pa
         fig.text(0.06, y, n, fontsize=12, color=CARD["gold"], family=mono)
         fig.text(0.1, y, text, fontsize=14, color=CARD["text"], family=serif)
 
-    ax = fig.add_axes([0.63, 0.14, 0.32, 0.7])
+    ax = fig.add_axes((0.63, 0.14, 0.32, 0.7))
     ax.set_facecolor(CARD["bg"])
     ax.plot([0, 1], [0, 1], color=CARD["faint"], lw=1.2, ls=(0, (4, 4)), zorder=1)
     dodge = {"Kalshi": -0.006, "Polymarket": 0.006}

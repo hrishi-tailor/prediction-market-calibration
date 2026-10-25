@@ -1,4 +1,4 @@
-.PHONY: install lint test fetch-kalshi fetch-polymarket build analyze all
+.PHONY: install lint typecheck test fetch-kalshi fetch-polymarket build analyze all
 
 install:
 	uv sync
@@ -6,6 +6,9 @@ install:
 lint:
 	uv run ruff check .
 	uv run ruff format --check .
+
+typecheck:
+	uv run mypy
 
 test:
 	uv run pytest -q
