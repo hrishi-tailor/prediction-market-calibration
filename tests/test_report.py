@@ -26,7 +26,7 @@ def synthetic_dataset(n_markets=3_000, seed=1):
                         "category": ["Sports", "Politics", "Economics"][i % 3],
                         "title": "",
                         "volume": float(rng.lognormal(9, 1)),
-                        "open_time": datetime(2025, 1, 1, tzinfo=UTC),
+                        "open_time": datetime(2023, 6, 1, tzinfo=UTC),
                         "close_time": datetime(2024 + i % 3, 3 + (i % 2) * 6, 1, tzinfo=UTC),
                         "duration_days": 59.0,
                         "outcome": outcome,

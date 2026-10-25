@@ -68,7 +68,9 @@ def polymarket_price_at(
     i = last_at_or_before([p[0] for p in points], t)
     if i is None or t - points[i][0] > max_age.total_seconds():
         return None
-    return float(points[i][1])
+    price = float(points[i][1])
+    # The API occasionally reports a price just outside [0, 1]; it isn't a probability.
+    return price if 0 <= price <= 1 else None
 
 
 def _base_row(platform: str, market: dict[str, Any], close: datetime) -> dict[str, Any]:
@@ -191,6 +193,61 @@ def _polymarket_all() -> Iterable[dict]:
             yield from polymarket_rows(market, points, close_times.get(market["market_id"]))
 
 
+REQUIRED_COLUMNS = {
+    "platform",
+    "market_id",
+    "event_id",
+    "category",
+    "volume",
+    "open_time",
+    "close_time",
+    "outcome",
+    "horizon",
+    "price",
+}
+
+
+class DatasetError(ValueError):
+    """The observations table breaks an invariant the analysis relies on."""
+
+
+def validate(df: pd.DataFrame) -> pd.DataFrame:
+    """Checks every invariant the analysis assumes, and lists every one that fails.
+
+    Bad data here would not crash the analysis; it would quietly produce wrong
+    charts. So the build refuses to write, and the analysis refuses to run, on a
+    table that fails any check.
+    """
+    missing = REQUIRED_COLUMNS - set(df.columns)
+    if missing:
+        raise DatasetError(f"missing columns: {sorted(missing)}")
+
+    problems = []
+
+    def check(mask: pd.Series, message: str) -> None:
+        bad = int(mask.sum())
+        if bad:
+            problems.append(f"{bad} rows: {message}")
+
+    check(~df["platform"].isin(["Kalshi", "Polymarket"]), "unknown platform")
+    check(~df["horizon"].astype(str).isin(list(config.HORIZONS)), "unknown horizon")
+    check(~df["price"].between(0, 1), "price outside [0, 1]")
+    check(~df["outcome"].isin([0, 1]), "outcome not 0 or 1")
+    check(df["volume"] < 0, "negative volume")
+    check(
+        pd.to_datetime(df["close_time"]) < pd.to_datetime(df["open_time"]), "closes before it opens"
+    )
+    check(df.duplicated(["market_id", "horizon"]), "duplicate market and horizon")
+    if {"bid", "ask"} <= set(df.columns):
+        quoted = df["bid"].notna() & df["ask"].notna()
+        check(quoted & (df["bid"] > df["ask"]), "bid above ask")
+    if "volume_24h" in df:
+        check(df["volume_24h"] < 0, "negative 24-hour volume")
+    if problems:
+        raise DatasetError("dataset failed validation:\n  " + "\n  ".join(problems))
+    return df
+
+
 def build() -> pd.DataFrame:
     rows: list[dict] = []
     for platform, source in (("kalshi", _kalshi_all), ("polymarket", _polymarket_all)):
@@ -200,6 +257,7 @@ def build() -> pd.DataFrame:
             log.warning("No %s markets fetched yet; skipping", platform)
     df = pd.DataFrame(rows)
     df["horizon"] = pd.Categorical(df["horizon"], categories=list(config.HORIZONS), ordered=True)
+    validate(df)
     df.to_parquet(config.DATASET_PATH, index=False)
     log.info(
         "Wrote %d observations from %d markets to %s",
@@ -211,4 +269,4 @@ def build() -> pd.DataFrame:
 
 
 def load() -> pd.DataFrame:
-    return pd.read_parquet(config.DATASET_PATH)
+    return validate(pd.read_parquet(config.DATASET_PATH))
