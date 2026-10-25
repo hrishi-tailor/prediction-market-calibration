@@ -76,6 +76,25 @@ error here is **clustered by event**: reliability-table intervals use a cluster
 bootstrap that resamples whole events, and the regressions use cluster-robust
 standard errors.
 
+### Testing many groups at once
+
+The analysis fits the calibration slope in 45 subgroups and time periods. At a 5%
+threshold, two or three of those would look significant by chance alone. So all 45
+p-values (each testing b = 1) are treated as one family and adjusted twice:
+Benjamini–Hochberg q-values, which control the false discovery rate, and Holm,
+which controls the chance of any false positive and is much stricter. The page
+calls a subgroup a clear finding only if its q-value is below 0.05.
+
+### Data validation
+
+`dataset.validate` runs when the dataset is built and again when it is loaded for
+analysis. It checks the invariants the statistics assume: every price between 0 and
+1, outcomes of 0 or 1, known platforms and horizons, no market closing before it
+opens, no bid above its ask, no duplicate market–horizon pair, non-negative
+volumes. It lists every failure rather than stopping at the first. Its first run
+found a Polymarket price history reporting 1.005, which the earlier code had
+silently clipped; prices outside [0, 1] are now discarded at the source.
+
 ## 4. Measuring calibration
 
 - **Reliability table:** realized Yes frequency per price bucket, with finer
