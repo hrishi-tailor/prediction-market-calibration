@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/style.css?v=7">
   <script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
@@ -53,7 +53,7 @@
         <p class="dek">Prediction markets let people bet on real-world events, and their prices are read as odds. I
           checked <strong class="count" data-count="total-markets">46,168</strong> of them against what actually
           happened, and found exactly where the odds go wrong.</p>
-        <a class="cta" href="#game">test your intuition first <span aria-hidden="true">↓</span></a>
+        <a class="cta" href="#story">the whole study in 60 seconds <span aria-hidden="true">↓</span></a>
       </div>
       <div class="hero__art" aria-hidden="true">
         <svg id="hero-art" viewBox="0 0 400 400"></svg>
@@ -67,9 +67,72 @@
       <div class="stat"><span class="stat__n" data-field="year-span">5</span><span class="stat__l">years of markets</span></div>
     </section>
 
+    <!-- The study in 60 seconds: one pinned chart, changed by captions scrolling past -->
+    <section class="scrolly" id="story" aria-label="The study in sixty seconds">
+      <div class="scrolly__graphic">
+        <div class="scrolly__chart" id="scrolly-chart" role="img" aria-label="Animated calibration chart that changes with each caption"></div>
+      </div>
+      <div class="scrolly__steps">
+        <div class="step" data-step="0">
+          <p class="step__k">the study in 60 seconds</p>
+          <p>Every dot you're about to see is a group of real markets with similar odds, priced a day before they
+            closed. <b>Across</b>: what the market said. <b>Up</b>: how often it actually happened.</p>
+        </div>
+        <div class="step" data-step="1">
+          <p>If the odds are honest, every dot lands on <b>this line</b>. Things priced at 30% happen 30% of the time;
+            things priced at 90% happen 90% of the time.</p>
+        </div>
+        <div class="step" data-step="2">
+          <p>Here are <b data-field="kalshi-day-n">13,951</b> prices from <b class="k">Kalshi</b>. Almost every
+            dot sits close to the line.</p>
+        </div>
+        <div class="step" data-step="3">
+          <p>And <b data-field="poly-day-n">28,092</b> from <b class="p">Polymarket</b>. On average, both are
+            remarkably honest: within one to two points.</p>
+        </div>
+        <div class="step" data-step="4">
+          <p>Now zoom into the <b>cheapest bets</b>, the long shots under 20¢. Kalshi's sit <b>below</b> the line:
+            they happen less often than priced. Polymarket's sit <b>above</b> it.</p>
+        </div>
+        <div class="step" data-step="5">
+          <p>And the <b>near-sure things</b>, over 80¢. On Kalshi they happen <b>more</b> often than priced. People
+            overpay for long shots and underpay for favourites.</p>
+        </div>
+        <div class="step" data-step="6">
+          <p>Honest on average, lopsided at the extremes. Here's what that looks like in real markets.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Real upsets -->
+    <section class="upsets wrap wrap--wide reveal" id="upsets" aria-labelledby="upsets-title">
+      <p class="eyebrow">real markets</p>
+      <h2 id="upsets-title">The upsets</h2>
+      <p class="lead">Odds don't say what <em>will</em> happen; they say how often. A day before each of these closed,
+        the market was almost certain. It was wrong.</p>
+      <div class="upsets__grid">
+        <div>
+          <h3 class="upsets__col">Long shots that came in</h3>
+          <div class="cards-list" id="story-longshots"></div>
+        </div>
+        <div>
+          <h3 class="upsets__col">Sure things that didn't</h3>
+          <div class="cards-list" id="story-favourites"></div>
+        </div>
+      </div>
+
+      <h3 class="upsets__sub">But how often <em>should</em> that happen?</h3>
+      <p class="lead lead--left">Upsets are supposed to happen: a 3% chance comes in about 3 times in 100. So I counted
+        every upset in the data and compared it with what the odds predicted.</p>
+      <div class="dotgrids" id="dotgrids"></div>
+      <p class="figure__note">Each dot is one market, a day before close. Long shots are priced at
+        <span data-field="longshot-max">5%</span> or less; sure things at <span data-field="favourite-min">95%</span>
+        or more. The stories above were picked for being memorable; the counts use every market.</p>
+    </section>
+
     <!-- Game -->
     <section class="game wrap wrap--mid reveal" id="game" aria-labelledby="game-title">
-      <p class="eyebrow">before we start</p>
+      <p class="eyebrow">your turn</p>
       <h2 id="game-title">Can you beat the market?</h2>
       <p class="lead">Here are three real groups of Kalshi markets, priced a day before they closed. The price is the
         market's guess at the odds. Drag the slider to <em>your</em> guess at how often they actually happened.</p>
@@ -430,6 +493,6 @@
     <a href="https://github.com/hrishi-tailor/prediction-market-calibration#findings">README</a>.</p></noscript>
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="assets/app.js?v=8"></script>
 </body>
 </html>

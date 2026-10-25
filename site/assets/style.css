@@ -284,6 +284,285 @@ h1 {
   cursor: help;
 }
 
+/* The study in 60 seconds: a pinned chart that captions scroll past */
+.scrolly {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+  gap: 48px;
+  max-width: calc(var(--wrap-wide) + var(--gutter) * 2);
+  margin: 40px auto 0;
+  padding-inline: var(--gutter);
+}
+
+.scrolly__graphic {
+  grid-column: 2;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+.scrolly__chart {
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 86vh;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 30px 60px -40px rgba(60, 40, 10, 0.45);
+}
+
+.scrolly__chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  font-family: var(--mono);
+}
+
+.scrolly__steps {
+  grid-column: 1;
+  grid-row: 1;
+  padding-block: 30vh 40vh;
+}
+
+.step {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.step p {
+  font: 400 22px/1.5 var(--serif);
+  font-variation-settings: "opsz" 36;
+  color: var(--ink-2);
+  transition: opacity 0.4s ease, color 0.4s ease;
+}
+
+.js .step:not(.is-active) p {
+  opacity: 0.28;
+}
+
+.step b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.step b.k {
+  color: var(--kalshi);
+}
+
+.step b.p {
+  color: var(--poly);
+}
+
+.step .step__k {
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+  opacity: 1 !important;
+}
+
+/* Real upsets */
+.upsets {
+  padding-top: 64px;
+}
+
+.upsets h2 {
+  font-size: clamp(30px, 4.4vw, 42px);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  margin-bottom: 12px;
+}
+
+.upsets .lead {
+  margin: 0 0 30px;
+  max-width: 60ch;
+}
+
+.lead--left {
+  margin-inline: 0 !important;
+}
+
+.upsets__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+.upsets__col,
+.upsets__sub {
+  font: 500 13px/1.4 var(--mono);
+  color: var(--muted);
+  margin: 0 0 12px;
+  text-transform: lowercase;
+}
+
+.upsets__sub {
+  font: 500 clamp(24px, 3.2vw, 30px)/1.2 var(--serif);
+  color: var(--ink);
+  text-transform: none;
+  margin: 56px 0 10px;
+}
+
+.cards-list {
+  display: grid;
+  gap: 12px;
+}
+
+.upset {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 18px;
+  padding: 18px 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.upset:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px -26px rgba(60, 40, 10, 0.45);
+}
+
+.upset__meta {
+  grid-column: 1 / -1;
+  font: 500 11px/1.4 var(--mono);
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.upset__q {
+  font: 500 18px/1.35 var(--serif);
+  color: var(--ink);
+}
+
+.upset__odds {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.upset__odds b {
+  display: block;
+  font: 500 30px/1 var(--serif);
+  font-variant-numeric: tabular-nums;
+}
+
+.upset__odds span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.upset__badge {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 600 12px/1.4 var(--mono);
+}
+
+.upset__badge--yes {
+  background: #e3efe6;
+  color: var(--yes);
+}
+
+.upset__badge--no {
+  background: #f5e1dc;
+  color: var(--no);
+}
+
+.dotgrids {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.dotgrid {
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.dotgrid__head {
+  font: 500 12px/1.4 var(--mono);
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.dotgrid__big {
+  font: 500 20px/1.35 var(--serif);
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+.dotgrid__big b {
+  font-weight: 600;
+}
+
+.dotgrid__dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  transform: scale(0);
+  transition: transform 0.35s cubic-bezier(0.3, 1.4, 0.6, 1);
+}
+
+.dotgrid.is-on .dot {
+  transform: scale(1);
+}
+
+.dot--expected {
+  border-color: var(--axis);
+}
+
+.dot--actual {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+}
+
+.dot--extra {
+  background: var(--ink-2);
+  border-color: var(--ink-2);
+}
+
+.dotgrid__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.dotgrid__legend span {
+  white-space: nowrap;
+}
+
+.dotgrid__legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
 /* Game */
 .game {
   padding-block: 72px 24px;
@@ -1191,6 +1470,63 @@ th {
 }
 
 @media (max-width: 900px) {
+  /* Phones and tablets: the chart pins to the top, captions scroll over it as cards. */
+  .scrolly {
+    display: block;
+    padding-inline: 0;
+  }
+
+  .scrolly__graphic {
+    height: auto;
+    top: 0;
+    /* Above the captions, so cards slide behind the chart rather than over it. */
+    z-index: 2;
+    padding: 12px var(--gutter);
+    background: var(--paper);
+  }
+
+  .scrolly__chart {
+    max-height: 58vh;
+    max-width: 58vh;
+    margin-inline: auto;
+  }
+
+  .scrolly__steps {
+    position: relative;
+    z-index: 1;
+    padding: 10vh var(--gutter) 30vh;
+  }
+
+  .step {
+    min-height: 80vh;
+    justify-content: flex-end;
+  }
+
+  .step p {
+    padding: 16px 18px;
+    background: color-mix(in srgb, var(--card) 94%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    font-size: 18px;
+    box-shadow: 0 14px 30px -24px rgba(60, 40, 10, 0.5);
+  }
+
+  .js .step:not(.is-active) p {
+    opacity: 0.55;
+  }
+
+  .step .step__k {
+    padding: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .upsets__grid,
+  .dotgrids {
+    grid-template-columns: 1fr;
+  }
+
   .hero {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -1321,5 +1657,13 @@ th {
   .js .reveal {
     opacity: 1;
     transform: none;
+  }
+
+  .dot {
+    transform: none;
+  }
+
+  .js .step:not(.is-active) p {
+    opacity: 1;
   }
 }
