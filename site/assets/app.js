@@ -130,6 +130,10 @@ function fillText() {
   document.querySelectorAll('[data-count="total-markets"]').forEach((el) => (el.dataset.target = data.totals.markets));
   document.querySelectorAll('[data-count="total-observations"]').forEach((el) => (el.dataset.target = data.totals.observations));
 
+  const dayN = (p) => data.summary.find((r) => r.platform === p && r.horizon === data.headline_horizon)?.n;
+  if (dayN("Kalshi")) setField("kalshi-day-n", fmtInt(dayN("Kalshi")));
+  if (dayN("Polymarket")) setField("poly-day-n", fmtInt(dayN("Polymarket")));
+
   const mt = data.multiple_testing;
   if (mt) {
     setField("mt-tests", fmtInt(mt.tests));
@@ -252,6 +256,191 @@ function drawHeroArt() {
     .attr("stroke-width", 2);
   dots.transition().delay((d, i) => (reduceMotion() ? 0 : 300 + i * 45)).duration(reduceMotion() ? 0 : 900).ease(d3.easeBackOut.overshoot(1.4))
     .attr("r", 7).attr("cy", (d) => y(d.freq));
+}
+
+// ---------- the study in 60 seconds (scrollytelling) ----------
+// One chart stays pinned while captions scroll past; each caption sets a step.
+const STEP_VIEWS = [
+  { domain: [0, 1], line: false, show: [] },
+  { domain: [0, 1], line: true, show: [] },
+  { domain: [0, 1], line: true, show: ["Kalshi"] },
+  { domain: [0, 1], line: true, show: ["Kalshi", "Polymarket"] },
+  { domain: [0, 0.22], line: true, show: ["Kalshi", "Polymarket"], note: "low" },
+  { domain: [0.78, 1], line: true, show: ["Kalshi", "Polymarket"], note: "high" },
+  { domain: [0, 1], line: true, show: ["Kalshi", "Polymarket"] },
+];
+const scrolly = { step: -1 };
+
+function buildScrolly() {
+  const c = colors();
+  const el = document.getElementById("scrolly-chart");
+  const size = Math.max(260, Math.round(el.clientWidth));
+  const m = { top: 28, right: 22, bottom: 48, left: 52 };
+  el.replaceChildren();
+  const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${size} ${size}`);
+  const x = d3.scaleLinear([0, 1], [m.left, size - m.right]);
+  const y = d3.scaleLinear([0, 1], [size - m.bottom, m.top]);
+  svg.append("clipPath").attr("id", "scrolly-clip").append("rect")
+    .attr("x", m.left).attr("y", m.top).attr("width", size - m.left - m.right).attr("height", size - m.top - m.bottom);
+  const gx = svg.append("g").attr("transform", `translate(0,${size - m.bottom})`);
+  const gy = svg.append("g").attr("transform", `translate(${m.left},0)`);
+  svg.append("text").attr("x", size - m.right).attr("y", size - 10).attr("text-anchor", "end").attr("fill", c.muted).attr("font-size", 12).text("what the market said →");
+  svg.append("text").attr("transform", `translate(14,${m.top}) rotate(-90)`).attr("text-anchor", "end").attr("fill", c.muted).attr("font-size", 12).text("how often it happened →");
+  const plot = svg.append("g").attr("clip-path", "url(#scrolly-clip)");
+  const line = plot.append("line").attr("stroke", c.ink2).attr("stroke-width", 1.5).attr("stroke-dasharray", "5 6");
+  const series = {};
+  for (const p of PLATFORMS) {
+    const rows = data.reliability.filter((r) => r.platform === p && r.horizon === data.headline_horizon);
+    const g = plot.append("g");
+    series[p] = {
+      rows,
+      whiskers: g.append("g").selectAll("line").data(rows).join("line").attr("stroke", c[p]).attr("stroke-width", 2.5).attr("stroke-linecap", "round").attr("opacity", 0),
+      dots: g.append("g").selectAll("circle").data(rows).join("circle").attr("fill", c[p]).attr("stroke", c.card).attr("stroke-width", 2).attr("r", 0),
+    };
+  }
+  const notes = svg.append("g");
+  Object.assign(scrolly, { svg, x, y, gx, gy, line, series, notes, size, m, c, step: -1 });
+  setScrollyStep(Math.max(0, scrolly.pending ?? 0), true);
+}
+
+function setScrollyStep(step, instant = false) {
+  if (!scrolly.svg) {
+    scrolly.pending = step;
+    return;
+  }
+  if (step === scrolly.step && !instant) return;
+  scrolly.step = step;
+  const { x, y, gx, gy, line, series, notes, size, m, c } = scrolly;
+  const view = STEP_VIEWS[step];
+  const t = d3.transition().duration(instant || reduceMotion() ? 0 : 900).ease(d3.easeCubicInOut);
+  x.domain(view.domain);
+  y.domain(view.domain);
+  const fmt = (d) => String(Math.round(d * 100));
+  gx.transition(t).call(d3.axisBottom(x).ticks(5).tickSize(-(size - m.top - m.bottom)).tickPadding(10).tickFormat((d) => `${fmt(d)}¢`));
+  gy.transition(t).call(d3.axisLeft(y).ticks(5).tickSize(-(size - m.left - m.right)).tickPadding(10).tickFormat((d) => `${fmt(d)}%`));
+  gx.call((g) => axisStyle(g, c));
+  gy.call((g) => axisStyle(g, c));
+
+  const [lo, hi] = view.domain;
+  line.transition(t).attr("x1", x(lo)).attr("y1", y(lo)).attr("x2", view.line ? x(hi) : x(lo)).attr("y2", view.line ? y(hi) : y(lo));
+
+  const zoomed = hi - lo < 0.5;
+  for (const p of PLATFORMS) {
+    const on = view.show.includes(p);
+    const dx = p === "Kalshi" ? -3 : 3;
+    series[p].dots.transition(t).delay((d, i) => (on && !instant && !reduceMotion() ? i * 30 : 0))
+      .attr("cx", (d) => x(d.mean_price) + dx).attr("cy", (d) => y(d.freq)).attr("r", on ? (zoomed ? 8 : 6) : 0);
+    series[p].whiskers.transition(t)
+      .attr("x1", (d) => x(d.mean_price) + dx).attr("x2", (d) => x(d.mean_price) + dx)
+      .attr("y1", (d) => y(d.ci_low)).attr("y2", (d) => y(d.ci_high)).attr("opacity", on ? 0.45 : 0);
+  }
+
+  // Plain-language callouts in the two zoomed steps.
+  notes.selectAll("*").remove();
+  if (view.note) {
+    const label = (text, px, py, color, anchor = "start") =>
+      notes.append("text").attr("x", px).attr("y", py).attr("text-anchor", anchor).attr("fill", color)
+        .attr("font-size", 13).attr("font-weight", 600).attr("opacity", 0).text(text)
+        .transition().delay(instant || reduceMotion() ? 0 : 700).duration(400).attr("opacity", 1);
+    if (view.note === "low") {
+      label("polymarket: above the line", m.left + 14, m.top + 22, c.Polymarket);
+      label("kalshi: below the line", size - m.right - 10, size - m.bottom - 16, c.Kalshi, "end");
+    } else {
+      label("kalshi: above the line", m.left + 14, m.top + 22, c.Kalshi);
+      label("happened more often than priced", m.left + 14, m.top + 40, c.muted);
+    }
+  }
+}
+
+function wireScrolly() {
+  // Activate whichever caption's centre is nearest a reading line two-thirds down the screen.
+  // A scroll handler rather than an IntersectionObserver: it behaves the same in every browser.
+  const steps = [...document.querySelectorAll(".step")];
+  if (!steps.length) return;
+  const update = () => {
+    const line = window.innerHeight * 0.66;
+    let best = steps[0];
+    let bestDist = Infinity;
+    for (const s of steps) {
+      const box = (s.querySelector("p:last-child") || s).getBoundingClientRect();
+      const dist = Math.abs((box.top + box.bottom) / 2 - line);
+      if (dist < bestDist) {
+        best = s;
+        bestDist = dist;
+      }
+    }
+    steps.forEach((s) => s.classList.toggle("is-active", s === best));
+    setScrollyStep(+best.dataset.step);
+  };
+  // Seven boxes to measure: cheap enough to run on every scroll event, and unlike
+  // requestAnimationFrame it isn't paused in background tabs.
+  window.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+  update();
+}
+
+// ---------- real upsets ----------
+function storyCard(r) {
+  const happened = r.outcome === 1;
+  const date = new Date(`${r.close_date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const volume = r.volume >= 1e6 ? `$${(r.volume / 1e6).toFixed(1)}M` : `$${Math.round(r.volume / 1e3)}K`;
+  const traded = r.platform === "Kalshi" ? `${volume.replace("$", "")} contracts traded` : `${volume} traded`;
+  return `<article class="upset">
+    <p class="upset__meta">${r.platform} · ${r.category.replace(" and ", " & ")} · closed ${date}</p>
+    <p class="upset__q">${r.title}</p>
+    <p class="upset__odds"><b>${fmtPct(r.price, r.price < 0.1 || r.price > 0.9 ? 1 : 0)}</b><span>chance, a day before</span></p>
+    <p class="upset__badge ${happened ? "upset__badge--yes" : "upset__badge--no"}">${happened ? "✓ it happened" : "✗ it didn't"} · ${traded}</p>
+  </article>`;
+}
+
+function drawStories() {
+  const st = data.stories;
+  if (!st) return;
+  document.getElementById("story-longshots").innerHTML = st.longshots.map(storyCard).join("");
+  document.getElementById("story-favourites").innerHTML = st.favourites.map(storyCard).join("");
+  setField("longshot-max", fmtPct(st.longshot_max, 0));
+  setField("favourite-min", fmtPct(st.favourite_min, 0));
+
+  const rate = (p) => st.rates.find((r) => r.platform === p);
+  const both = rate("Both");
+  const k = rate("Kalshi");
+  const poly = rate("Polymarket");
+  const grids = [
+    {
+      head: `sure things, ${fmtPct(st.favourite_min, 0)}+ · both platforms`,
+      big: `The odds said <b>${Math.round(both.favourite_expected)}</b> of ${fmtInt(both.favourites)} sure things should fail. Only <b>${both.favourite_actual}</b> did.`,
+      expected: both.favourite_expected,
+      actual: both.favourite_actual,
+    },
+    {
+      head: `long shots, under ${fmtPct(st.longshot_max, 0)} · kalshi`,
+      big: `The odds said <b>${Math.round(k.longshot_expected)}</b> of ${fmtInt(k.longshots)} long shots should come in. Only <b>${k.longshot_actual}</b> did.`,
+      expected: k.longshot_expected,
+      actual: k.longshot_actual,
+    },
+    {
+      head: `long shots, under ${fmtPct(st.longshot_max, 0)} · polymarket`,
+      big: `The odds said <b>${Math.round(poly.longshot_expected)}</b> of ${fmtInt(poly.longshots)} long shots should come in. <b>${poly.longshot_actual}</b> did, more than expected.`,
+      expected: poly.longshot_expected,
+      actual: poly.longshot_actual,
+    },
+  ];
+  const el = document.getElementById("dotgrids");
+  el.innerHTML = grids.map((g) => {
+    const exp = Math.round(g.expected);
+    const n = Math.max(exp, g.actual);
+    const dots = Array.from({ length: n }, (_, i) => {
+      // Dots past the expected count are surplus upsets, shown in a darker shade.
+      const cls = ["dot", i < exp ? "dot--expected" : "", i < g.actual ? (i < exp ? "dot--actual" : "dot--extra") : ""].join(" ");
+      return `<span class="${cls}" style="transition-delay:${Math.min(i * 12, 1400)}ms"></span>`;
+    }).join("");
+    return `<div class="dotgrid"><p class="dotgrid__head">${g.head}</p><p class="dotgrid__big">${g.big}</p>
+      <div class="dotgrid__dots" aria-hidden="true">${dots}</div>
+      <p class="dotgrid__legend"><span><i style="background:var(--accent-fill)"></i>happened</span><span><i style="border:1.5px solid var(--axis)"></i>${g.actual < exp ? "expected but didn't" : "the odds expected"}</span>${g.actual > exp ? '<span><i style="background:var(--ink-2)"></i>more than expected</span>' : ""}</p></div>`;
+  }).join("");
+  // Fill the dots in when they scroll into view.
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add("is-on")), { threshold: 0.35 });
+  el.querySelectorAll(".dotgrid").forEach((g) => io.observe(g));
 }
 
 // ---------- the guessing game ----------
@@ -928,6 +1117,7 @@ function drawReturns() {
 
 // ---------- wiring ----------
 function drawCharts() {
+  buildScrolly();
   buildHero();
   drawSlopes();
   drawPeriods();
@@ -974,7 +1164,9 @@ async function main() {
   wireSim();
   wire();
   drawHeroArt();
+  drawStories();
   drawCharts();
+  wireScrolly();
   wireReveal();
 }
 

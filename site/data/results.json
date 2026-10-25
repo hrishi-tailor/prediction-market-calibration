@@ -2432,6 +2432,133 @@
    "improvement_high": -0.0071
   }
  ],
+ "stories": {
+  "longshots": [
+   {
+    "platform": "Polymarket",
+    "title": "Iran closes its airspace by June 8?",
+    "category": "Politics",
+    "price": 0.0285,
+    "outcome": 1,
+    "volume": 11787943.20312,
+    "close_date": "2026-06-08"
+   },
+   {
+    "platform": "Kalshi",
+    "title": "Will David Crowley be the Democratic nominee for Governor in Wisconsin?",
+    "category": "Elections",
+    "price": 0.0475,
+    "outcome": 1,
+    "volume": 7116046.89,
+    "close_date": "2026-08-12"
+   },
+   {
+    "platform": "Polymarket",
+    "title": "Exact Score: Mexico 2 - 3 England?",
+    "category": "Sports",
+    "price": 0.0195,
+    "outcome": 1,
+    "volume": 1483157.07494,
+    "close_date": "2026-07-06"
+   },
+   {
+    "platform": "Polymarket",
+    "title": "Will Ethereum dip to $2,400 in January?",
+    "category": "Crypto",
+    "price": 0.015,
+    "outcome": 1,
+    "volume": 1703286.20725,
+    "close_date": "2026-01-31"
+   },
+   {
+    "platform": "Polymarket",
+    "title": "US bank failure by January 31?",
+    "category": "Economics",
+    "price": 0.009,
+    "outcome": 1,
+    "volume": 693336.6736,
+    "close_date": "2026-01-31"
+   },
+   {
+    "platform": "Polymarket",
+    "title": "Will SZA release a new song in 2025?",
+    "category": "Culture",
+    "price": 0.028,
+    "outcome": 1,
+    "volume": 1192326.37036,
+    "close_date": "2025-12-31"
+   }
+  ],
+  "favourites": [
+   {
+    "platform": "Polymarket",
+    "title": "Elise Stefanik confirmed as UN ambassador?",
+    "category": "Politics",
+    "price": 0.967,
+    "outcome": 0,
+    "volume": 1207022.24,
+    "close_date": "2025-03-28"
+   },
+   {
+    "platform": "Polymarket",
+    "title": "Will the Browns draft Travis Hunter in 2025?",
+    "category": "Sports",
+    "price": 0.9835,
+    "outcome": 0,
+    "volume": 14784.84422,
+    "close_date": "2025-04-24"
+   },
+   {
+    "platform": "Kalshi",
+    "title": "Will Francesca Hong be the Democratic nominee for Governor in Wisconsin?",
+    "category": "Elections",
+    "price": 0.9535,
+    "outcome": 0,
+    "volume": 7274077.96,
+    "close_date": "2026-08-12"
+   },
+   {
+    "platform": "Kalshi",
+    "title": "Will Ilia Malinin win any medal in Figure Skating Men's Singles?",
+    "category": "Sports",
+    "price": 0.97,
+    "outcome": 0,
+    "volume": 33186,
+    "close_date": "2026-02-13"
+   }
+  ],
+  "rates": [
+   {
+    "platform": "Kalshi",
+    "longshots": 6516,
+    "longshot_expected": 81.8865,
+    "longshot_actual": 60,
+    "favourites": 1909,
+    "favourite_expected": 26.531,
+    "favourite_actual": 11
+   },
+   {
+    "platform": "Polymarket",
+    "longshots": 9632,
+    "longshot_expected": 116.1135,
+    "longshot_actual": 187,
+    "favourites": 1451,
+    "favourite_expected": 19.9185,
+    "favourite_actual": 11
+   },
+   {
+    "platform": "Both",
+    "longshots": 16148,
+    "longshot_expected": 198,
+    "longshot_actual": 247,
+    "favourites": 3360,
+    "favourite_expected": 46.4495,
+    "favourite_actual": 22
+   }
+  ],
+  "longshot_max": 0.05,
+  "favourite_min": 0.95
+ },
  "early_close_share": 0.09966,
  "carry_distortion": {
   "1": 7e-05,

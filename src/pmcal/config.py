@@ -49,3 +49,25 @@ POLYMARKET_MAX_MARKETS_PER_EVENT = 10
 POLYMARKET_MAX_MARKETS = 30_000
 
 RANDOM_SEED = 20261021
+
+# Real markets featured on the website as stories: clear, recognisable questions,
+# chosen by hand because some titles (e.g. "Spain vs Iraq Winner?") don't say which
+# side "Yes" is. The base rates shown beside them are computed over every market,
+# so the picks can't skew the numbers.
+STORY_LONGSHOTS: list[tuple[str, str]] = [
+    ("Polymarket", "2429034"),  # Iran closes its airspace by June 8?
+    ("Kalshi", "KXGOVWINOMD-26-DCRO"),  # David Crowley, Wisconsin Democratic governor nominee
+    ("Polymarket", "2766812"),  # Exact Score: Mexico 2 - 3 England?
+    ("Polymarket", "1082804"),  # Will Ethereum dip to $2,400 in January?
+    ("Polymarket", "913814"),  # US bank failure by January 31?
+    ("Polymarket", "628817"),  # Will SZA release a new song in 2025?
+]
+STORY_FAVOURITES: list[tuple[str, str]] = [
+    ("Polymarket", "512957"),  # Elise Stefanik confirmed as UN ambassador?
+    ("Polymarket", "527581"),  # Will the Browns draft Travis Hunter in 2025?
+    ("Kalshi", "KXGOVWINOMD-26-FHON"),  # Francesca Hong, Wisconsin Democratic governor nominee
+    ("Kalshi", "KXWOFSKATE-MENS26MEDAL-IMAL"),  # Ilia Malinin, any Olympic medal
+]
+# Price thresholds for "long shots" and "sure things" in the base rates.
+LONGSHOT_MAX = 0.05
+FAVOURITE_MIN = 0.95

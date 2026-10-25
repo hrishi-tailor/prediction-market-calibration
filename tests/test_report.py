@@ -76,6 +76,13 @@ def test_report_runs_end_to_end(tmp_path, monkeypatch):
     assert any(r["group"] == "Recent trading" for r in site["slopes"])
     assert site["multiple_testing"]["tests"] == len(site["slopes"]) + len(site["by_period"])
     assert all("q_bh" in r for r in site["slopes"])
+    rates = {r["platform"]: r for r in site["stories"]["rates"]}
+    assert (
+        rates["Both"]["longshots"]
+        == rates["Kalshi"]["longshots"] + rates["Polymarket"]["longshots"]
+    )
+    # The synthetic data has none of the featured markets, so the picks are skipped.
+    assert site["stories"]["longshots"] == []
     assert "NaN" not in (tmp_path / "site" / "results.json").read_text()
     # Synthetic prices are calibrated (with noise), so slopes should be near 1.
     for row in result["summary"]:

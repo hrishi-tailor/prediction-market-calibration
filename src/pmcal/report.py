@@ -148,6 +148,65 @@ def by_period(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
+def stories(df: pd.DataFrame) -> dict[str, Any]:
+    """Featured real markets, plus how often long shots and sure things actually came in.
+
+    Base rates use every market one day before close: the odds imply an expected
+    number of upsets (the sum of the prices for long shots, of one minus the price
+    for favourites), compared with how many happened.
+    """
+    head = df[df["horizon"] == HEADLINE_HORIZON]
+
+    def pick(ids: list[tuple[str, str]]) -> list[dict[str, Any]]:
+        out = []
+        for platform, market_id in ids:
+            row = head[
+                (head["platform"] == platform) & (head["market_id"].astype(str) == market_id)
+            ]
+            if row.empty:
+                log.warning(
+                    "Story market %s %s is not in the dataset; skipping", platform, market_id
+                )
+                continue
+            r = row.iloc[0]
+            out.append(
+                {
+                    "platform": platform,
+                    "title": r["title"],
+                    "category": r["category"],
+                    "price": float(r["price"]),
+                    "outcome": int(r["outcome"]),
+                    "volume": float(r["volume"]),
+                    "close_date": pd.Timestamp(r["close_time"]).date().isoformat(),
+                }
+            )
+        return out
+
+    rates = []
+    for platform in ("Kalshi", "Polymarket", "Both"):
+        g = head if platform == "Both" else head[head["platform"] == platform]
+        lo = g[g["price"] <= config.LONGSHOT_MAX]
+        hi = g[g["price"] >= config.FAVOURITE_MIN]
+        rates.append(
+            {
+                "platform": platform,
+                "longshots": len(lo),
+                "longshot_expected": float(lo["price"].sum()),
+                "longshot_actual": int(lo["outcome"].sum()),
+                "favourites": len(hi),
+                "favourite_expected": float((1 - hi["price"]).sum()),
+                "favourite_actual": int((1 - hi["outcome"]).sum()),
+            }
+        )
+    return {
+        "longshots": pick(config.STORY_LONGSHOTS),
+        "favourites": pick(config.STORY_FAVOURITES),
+        "rates": rates,
+        "longshot_max": config.LONGSHOT_MAX,
+        "favourite_min": config.FAVOURITE_MIN,
+    }
+
+
 def multiple_testing_summary(*tables: pd.DataFrame) -> pd.DataFrame:
     """How many of the pooled tests look significant before and after correction."""
     rows = pd.concat([t[["p_b1", "q_bh", "p_holm"]] for t in tables if len(t)])
@@ -259,6 +318,7 @@ def run() -> dict[str, Any]:
     adjusted = models.adjust_pvalues({"slopes": slopes, "by_period": extras["by_period"]})
     slopes, extras["by_period"] = adjusted["slopes"], adjusted["by_period"]
     extras["multiple_testing"] = multiple_testing_summary(slopes, extras["by_period"])
+    story_data = stories(df)
 
     write_markdown(
         df, summary, reliability, returns, slopes, drivers, carry, on_time_summary, extras
@@ -283,6 +343,7 @@ def run() -> dict[str, Any]:
             on_time_summary,
             HEADLINE_HORIZON,
             extras,
+            story_data,
         )
     )
     log.info("Wrote figures to %s and report to %s", config.FIGURES_DIR, config.REPORTS_DIR)
@@ -466,6 +527,22 @@ def write_markdown(
                 "logloss_raw": ".4f",
                 "logloss_recal": ".4f",
             },
+        ),
+        "",
+    ]
+
+    lines += ["## Upsets: expected against actual", ""]
+    lines += [
+        f"One day before close. Long shots are prices at or below {config.LONGSHOT_MAX:.0%}; "
+        f"sure things at or above {config.FAVOURITE_MIN:.0%}. Expected counts are what the "
+        "prices imply.",
+        "",
+    ]
+    rates = pd.DataFrame(stories(df)["rates"])
+    lines += [
+        md_table(
+            rates,
+            {"longshot_expected": ".0f", "favourite_expected": ".0f"},
         ),
         "",
     ]

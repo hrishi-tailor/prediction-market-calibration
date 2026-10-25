@@ -45,6 +45,13 @@ trading costs or can be used to forecast better than the market.
    to +0.25%), and Polymarket's gets slightly worse. A bias you can measure after the
    fact isn't one you can use.
 
+**In plain numbers:** a day before close, contracts priced at 95% or more should have
+failed about 46 times out of 3,360; only 22 did. Kalshi contracts priced at 5% or less
+should have come in about 82 times out of 6,516; only 60 did. On Polymarket the same
+long shots came in 187 times against 116 expected. The website pairs these counts with
+real examples, such as Elise Stefanik's UN confirmation (96.7% a day before; it didn't
+happen) and Iran closing its airspace by June 8 (2.9%; it did).
+
 ![Calibration gap by platform and horizon](figures/calibration_gap.png)
 
 Each point is a price bucket: how much more often the outcome happened than the

@@ -32,6 +32,14 @@ def _clean(value: Any) -> Any:
     return value
 
 
+def _deep_clean(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(k): _deep_clean(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [_deep_clean(v) for v in value]
+    return _clean(value)
+
+
 def _records(df: pd.DataFrame, columns: list[str]) -> list[dict[str, Any]]:
     return [{c: _clean(row[c]) for c in columns} for _, row in df[columns].iterrows()]
 
@@ -46,6 +54,7 @@ def build(
     on_time_summary: pd.DataFrame,
     headline_horizon: str,
     extras: dict[str, pd.DataFrame] | None = None,
+    story_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     extras = extras or {}
     platforms = (
@@ -195,6 +204,7 @@ def build(
         )
         if "forecast" in extras
         else [],
+        "stories": _deep_clean(story_data) if story_data else None,
         "early_close_share": _clean(early_share),
         "carry_distortion": {str(k): _clean(v) for k, v in carry.items()},
     }
