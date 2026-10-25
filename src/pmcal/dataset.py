@@ -34,7 +34,7 @@ def parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00").replace(" ", "T"))
 
 
-def last_at_or_before(timestamps: Sequence[int], t: int) -> int | None:
+def last_at_or_before(timestamps: Sequence[float], t: int) -> int | None:
     """Index of the last timestamp <= t in a sorted sequence, or None."""
     i = bisect.bisect_right(timestamps, t) - 1
     return i if i >= 0 else None
@@ -135,9 +135,10 @@ def kalshi_rows(market: dict[str, Any], candles: Sequence[Sequence[Any]]) -> lis
 
 def closed_early(times: dict[str, str | None] | None) -> bool | None:
     """True if a market closed more than `EARLY_CLOSE` before its scheduled end."""
-    if not times or not times.get("end") or not times.get("closed"):
+    end_text, closed_text = (times or {}).get("end"), (times or {}).get("closed")
+    if not end_text or not closed_text:
         return None
-    end, closed = parse_ts(times["end"]), parse_ts(times["closed"])
+    end, closed = parse_ts(end_text), parse_ts(closed_text)
     if closed.tzinfo is None:
         closed = closed.replace(tzinfo=end.tzinfo)
     return end - closed > EARLY_CLOSE

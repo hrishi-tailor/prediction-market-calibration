@@ -16,6 +16,8 @@ Standard errors are clustered by event.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -163,7 +165,7 @@ def returns_by_bucket(
     bins = assign_bins(df["price"], edges)
     n_bins = len(edges) - 1
     codes = pd.factorize(df["event_id"])[0]
-    n_clusters = codes.max() + 1
+    n_clusters = int(codes.max()) + 1
     flat = codes * n_bins + bins
 
     def sums(values: np.ndarray) -> np.ndarray:
@@ -208,7 +210,7 @@ def period_label(close_time: pd.Series) -> pd.Series:
     """'2021–24' for early markets, then half-years such as '2025 H1'."""
     ct = pd.to_datetime(close_time, utc=True)
     half = np.where(ct.dt.month <= 6, " H1", " H2")
-    label = ct.dt.year.astype(str) + half
+    label: pd.Series = ct.dt.year.astype(str) + half
     return label.where(ct >= EARLY_PERIOD_END, EARLY_PERIOD)
 
 
@@ -224,7 +226,7 @@ def recalibrate(price: pd.Series, a: float, b: float) -> np.ndarray:
 
 def out_of_sample(
     df: pd.DataFrame, split: str, n_boot: int = 1000, seed: int = config.RANDOM_SEED
-) -> dict[str, float]:
+) -> dict[str, Any]:
     """Could the bias have been used to forecast better than the market?
 
     Fits the calibration regression on markets closing before `split`, applies

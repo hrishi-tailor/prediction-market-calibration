@@ -39,7 +39,7 @@ def _records(df: pd.DataFrame, columns: list[str]) -> list[dict[str, Any]]:
 def build(
     df: pd.DataFrame,
     summary: pd.DataFrame,
-    reliability: dict[tuple[str, str], pd.DataFrame],
+    reliability: dict[Any, pd.DataFrame],
     returns: pd.DataFrame,
     slopes: pd.DataFrame,
     carry: dict[int, float],
@@ -68,7 +68,7 @@ def build(
 
     def summary_row(platform: str, horizon: str) -> dict[str, Any]:
         row = summary[(summary["platform"] == platform) & (summary["horizon"] == horizon)]
-        return {c: _clean(v) for c, v in row.iloc[0].items()} if len(row) else {}
+        return {str(c): _clean(v) for c, v in row.iloc[0].items()} if len(row) else {}
 
     cheapest = returns.iloc[0] if len(returns) else None
     reliability_rows = []

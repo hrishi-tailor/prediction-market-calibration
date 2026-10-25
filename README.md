@@ -135,6 +135,7 @@ since.
 ```bash
 make test               # pytest
 make lint               # ruff
+make typecheck          # mypy
 ```
 
 ## Website
