@@ -72,6 +72,16 @@ The calibration regression is fitted on markets closing before the split and app
 | Polymarket | 1d | 3351 | 24740 | 1.020 | 0.12885 | 0.12922 | -0.29% | [-0.34%, -0.24%] | 0.3896 | 0.3912 |
 | Polymarket | 1h | 3683 | 25301 | 1.058 | 0.09430 | 0.09512 | -0.87% | [-1.04%, -0.71%] | 0.2843 | 0.2880 |
 
+## Upsets: expected against actual
+
+One day before close. Long shots are prices at or below 5%; sure things at or above 95%. Expected counts are what the prices imply.
+
+| platform | longshots | longshot_expected | longshot_actual | favourites | favourite_expected | favourite_actual |
+|---|---|---|---|---|---|---|
+| Kalshi | 6516 | 82 | 60 | 1909 | 27 | 11 |
+| Polymarket | 9632 | 116 | 187 | 1451 | 20 | 11 |
+| Both | 16148 | 198 | 247 | 3360 | 46 | 22 |
+
 ## Reliability tables
 
 ### Kalshi, 30d before close
