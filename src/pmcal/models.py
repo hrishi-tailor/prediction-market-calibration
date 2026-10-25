@@ -268,3 +268,28 @@ def out_of_sample(
         "logloss_raw": log_loss(p),
         "logloss_recal": log_loss(q),
     }
+
+
+def adjust_pvalues(
+    frames: dict[str, pd.DataFrame], column: str = "p_b1"
+) -> dict[str, pd.DataFrame]:
+    """Corrects one family of tests spread across several tables.
+
+    The page tests dozens of subgroups at once, so a few would look significant by
+    chance alone. Every table's p-values are pooled into one family and adjusted
+    two ways: Benjamini-Hochberg q-values (false discovery rate) and Holm
+    (family-wise error rate, stricter). Each table comes back with `q_bh`,
+    `p_holm` and the family size.
+    """
+    from statsmodels.stats.multitest import multipletests
+
+    keys = [k for k, df in frames.items() if len(df)]
+    pooled = np.concatenate([frames[k][column].to_numpy(float) for k in keys])
+    q = multipletests(pooled, method="fdr_bh")[1]
+    holm = multipletests(pooled, method="holm")[1]
+    out, i = dict(frames), 0
+    for k in keys:
+        n = len(frames[k])
+        out[k] = frames[k].assign(q_bh=q[i : i + n], p_holm=holm[i : i + n], tests=len(pooled))
+        i += n
+    return out

@@ -148,6 +148,21 @@ def by_period(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
+def multiple_testing_summary(*tables: pd.DataFrame) -> pd.DataFrame:
+    """How many of the pooled tests look significant before and after correction."""
+    rows = pd.concat([t[["p_b1", "q_bh", "p_holm"]] for t in tables if len(t)])
+    return pd.DataFrame(
+        [
+            {
+                "tests": len(rows),
+                "nominal": int((rows["p_b1"] < 0.05).sum()),
+                "survive_bh": int((rows["q_bh"] < 0.05).sum()),
+                "survive_holm": int((rows["p_holm"] < 0.05).sum()),
+            }
+        ]
+    )
+
+
 def composition(df: pd.DataFrame) -> pd.DataFrame:
     """Polymarket's latest year against earlier ones, with and without weather markets.
 
@@ -239,6 +254,11 @@ def run() -> dict[str, Any]:
         "forecast": forecast_tests(df),
     }
     plots.slopes_over_time(extras["by_period"])
+
+    # Every subgroup and time-period slope is one family of tests.
+    adjusted = models.adjust_pvalues({"slopes": slopes, "by_period": extras["by_period"]})
+    slopes, extras["by_period"] = adjusted["slopes"], adjusted["by_period"]
+    extras["multiple_testing"] = multiple_testing_summary(slopes, extras["by_period"])
 
     write_markdown(
         df, summary, reliability, returns, slopes, drivers, carry, on_time_summary, extras
@@ -380,9 +400,19 @@ def write_markdown(
     lines += [
         md_table(
             bp.assign(ci=bp.apply(lambda r: f"[{r.b_low:.2f}, {r.b_high:.2f}]", axis=1))[
-                ["platform", "period", "n", "events", "b", "ci", "median_volume", "weather_share"]
-            ],
-            {"b": ".3f", "median_volume": ",.0f", "weather_share": ".1%"},
+                [
+                    "platform",
+                    "period",
+                    "n",
+                    "events",
+                    "b",
+                    "ci",
+                    "q_bh",
+                    "median_volume",
+                    "weather_share",
+                ]
+            ].rename(columns={"q_bh": "q"}),
+            {"b": ".3f", "q": ".2g", "median_volume": ",.0f", "weather_share": ".1%"},
         ),
         "",
     ]
@@ -473,10 +503,18 @@ def write_markdown(
     ]
 
     lines += ["## Calibration slope by subgroup", ""]
+    mt = extras["multiple_testing"].iloc[0]
+    lines += [
+        f"Subgroup and time-period slopes are one family of {mt.tests} tests. `q` is the "
+        "Benjamini-Hochberg q-value (false discovery rate) and `p (Holm)` the Holm-adjusted "
+        f"p-value (family-wise error rate). {mt.nominal} tests have p < 0.05; {mt.survive_bh} "
+        f"survive at q < 0.05 and {mt.survive_holm} under Holm.",
+        "",
+    ]
     s = slopes.assign(ci=slopes.apply(lambda r: f"[{r.b_low:.2f}, {r.b_high:.2f}]", axis=1))[
-        ["platform", "group", "level", "n", "events", "b", "ci", "p_b1"]
-    ].rename(columns={"p_b1": "p(b=1)"})
-    lines += [md_table(s, {"b": ".3f", "p(b=1)": ".2g"}), ""]
+        ["platform", "group", "level", "n", "events", "b", "ci", "p_b1", "q_bh", "p_holm"]
+    ].rename(columns={"p_b1": "p(b=1)", "q_bh": "q", "p_holm": "p (Holm)"})
+    lines += [md_table(s, {"b": ".3f", "p(b=1)": ".2g", "q": ".2g", "p (Holm)": ".2g"}), ""]
 
     lines += ["## Joint model of what drives the slope", ""]
     lines += [

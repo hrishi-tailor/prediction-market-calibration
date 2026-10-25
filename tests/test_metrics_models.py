@@ -140,3 +140,16 @@ def test_out_of_sample_helps_only_when_the_bias_is_real():
     honest = with_dates(simulate(n=40_000, slope=1.0, seed=4))
     result = models.out_of_sample(honest, "2025-06-01", n_boot=200)
     assert result["improvement_low"] < 0 < result["improvement_high"]
+
+
+def test_adjust_pvalues_pools_tables_into_one_family():
+    a = pd.DataFrame({"p_b1": [0.001, 0.04]})
+    b = pd.DataFrame({"p_b1": [0.03, 0.9]})
+    out = models.adjust_pvalues({"a": a, "b": b, "empty": pd.DataFrame()})
+    assert (out["a"]["tests"] == 4).all()
+    # BH q-values are monotone in p and never below the raw p.
+    assert list(out["a"]["q_bh"].round(4)) == [0.004, 0.0533]
+    assert list(out["b"]["q_bh"].round(4)) == [0.0533, 0.9]
+    # Holm is stricter than BH.
+    assert (out["a"]["p_holm"] >= out["a"]["q_bh"]).all()
+    assert out["empty"].empty

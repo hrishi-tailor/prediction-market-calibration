@@ -143,7 +143,8 @@ def build(
             ],
         ),
         "slopes": _records(
-            slopes, ["platform", "group", "level", "n", "events", "b", "b_low", "b_high", "p_b1"]
+            slopes,
+            ["platform", "group", "level", "n", "events", "b", "b_low", "b_high", "p_b1", "q_bh"],
         ),
         "polymarket_on_time": _records(
             on_time_summary, ["horizon", "n", "yes_rate", "mean_price", "b", "b_low", "b_high"]
@@ -160,12 +161,16 @@ def build(
                 "b",
                 "b_low",
                 "b_high",
+                "q_bh",
                 "median_volume",
                 "weather_share",
             ],
         )
         if "by_period" in extras
         else [],
+        "multiple_testing": {k: _clean(v) for k, v in extras["multiple_testing"].iloc[0].items()}
+        if "multiple_testing" in extras
+        else None,
         "composition": _records(
             extras["composition"], ["sample", "period", "n", "events", "b", "b_low", "b_high"]
         )

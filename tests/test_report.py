@@ -74,6 +74,8 @@ def test_report_runs_end_to_end(tmp_path, monkeypatch):
     assert (tmp_path / "site" / "og-image.png").exists()
     assert site["by_period"] and site["forecast"] and site["composition"]
     assert any(r["group"] == "Recent trading" for r in site["slopes"])
+    assert site["multiple_testing"]["tests"] == len(site["slopes"]) + len(site["by_period"])
+    assert all("q_bh" in r for r in site["slopes"])
     assert "NaN" not in (tmp_path / "site" / "results.json").read_text()
     # Synthetic prices are calibrated (with noise), so slopes should be near 1.
     for row in result["summary"]:
