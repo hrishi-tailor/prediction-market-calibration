@@ -130,6 +130,15 @@ function fillText() {
   document.querySelectorAll('[data-count="total-markets"]').forEach((el) => (el.dataset.target = data.totals.markets));
   document.querySelectorAll('[data-count="total-observations"]').forEach((el) => (el.dataset.target = data.totals.observations));
 
+  const mt = data.multiple_testing;
+  if (mt) {
+    setField("mt-tests", fmtInt(mt.tests));
+    setField("mt-nominal", fmtInt(mt.nominal));
+    setField("mt-bh", fmtInt(mt.survive_bh));
+    setField("mt-holm", fmtInt(mt.survive_holm));
+    setField("mt-figure", `${mt.survive_bh}/${mt.nominal}`);
+  }
+
   // Time trend, Polymarket mix and the forecast test.
   const kPeriods = data.by_period.filter((r) => r.platform === "Kalshi");
   if (kPeriods.length) setField("kalshi-early-b", fmtB(kPeriods[0].b));
@@ -159,6 +168,10 @@ function fillText() {
     data.platforms.map((r) => [r.platform, fmtInt(r.markets), fmtInt(r.events), fmtInt(r.observations), `${monthYear(r.first_close)} – ${monthYear(r.last_close)}`])
   );
 }
+
+// A finding is "clear" if it survives the Benjamini-Hochberg correction across every subgroup and
+// period tested (falls back to the raw interval if q-values are missing).
+const isClear = (r) => (r.q_bh != null ? r.q_bh < 0.05 : r.b_low > 1 || r.b_high < 1);
 
 const kalshiDay = () => data.reliability.filter((r) => r.platform === "Kalshi" && r.horizon === data.headline_horizon);
 
@@ -634,12 +647,14 @@ function drawPeriods() {
   const g = svg.append("g").selectAll("g").data(rows).join("g");
   g.append("line").attr("x1", px).attr("x2", px).attr("y1", (r) => y(r.b_low)).attr("y2", (r) => y(r.b_high))
     .attr("stroke", (r) => c[r.platform]).attr("stroke-width", 2).attr("stroke-linecap", "round").attr("opacity", 0.75);
-  g.append("circle").attr("cx", px).attr("cy", (r) => y(r.b)).attr("r", 5).attr("fill", (r) => c[r.platform]).attr("stroke", c.paper).attr("stroke-width", 1.5);
+  g.append("circle").attr("cx", px).attr("cy", (r) => y(r.b)).attr("r", 5)
+    .attr("fill", (r) => (isClear(r) ? c[r.platform] : c.paper)).attr("stroke", (r) => c[r.platform]).attr("stroke-width", 2);
   g.append("circle").attr("cx", px).attr("cy", (r) => y(r.b)).attr("r", 13).attr("fill", "transparent")
     .on("pointermove", (event, r) => showTip(event, `${r.platform}, markets closing ${r.period}`, [
       `${fmtInt(r.n)} prices from ${fmtInt(r.events)} events`,
       `slope ${fmtB(r.b)} (95% CI ${fmtB(r.b_low)}–${fmtB(r.b_high)})`,
       `weather markets ${fmtPct(r.weather_share, 0)} of the mix`,
+      isClear(r) ? "clearly different from honest odds" : "consistent with honest odds",
     ]))
     .on("pointerleave", hideTip);
 
@@ -824,7 +839,7 @@ function drawForest() {
         svg.append("text").attr("x", 0).attr("y", y + 4).attr("fill", c.faint).attr("font-size", 10.5).attr("letter-spacing", "0.04em").text(r.header);
         return;
       }
-      const significant = r.b_low > 1 || r.b_high < 1;
+      const significant = isClear(r);
       svg.append("text").attr("x", m.left - 12).attr("y", y).attr("dy", "0.35em").attr("text-anchor", "end")
         .attr("fill", significant ? c.ink : c.muted).attr("font-weight", significant ? 500 : 400).attr("font-size", 12).text(r.label);
       svg.append("line").attr("x1", x(r.b_low)).attr("x2", x(r.b_high)).attr("y1", y).attr("y2", y)
@@ -835,6 +850,7 @@ function drawForest() {
         .on("pointermove", (event) => showTip(event, `${platform}: ${r.label}`, [
           `${fmtInt(r.events)} events`,
           `slope ${fmtB(r.b)} (95% CI ${fmtB(r.b_low)}–${fmtB(r.b_high)})`,
+          `q = ${fmtP(r.q_bh)} after correcting for ${data.multiple_testing?.tests ?? "all"} tests`,
           significant ? (r.b > 1 ? "long shots clearly overpriced" : "clearly overconfident") : "consistent with honest odds",
         ]))
         .on("pointerleave", hideTip);
